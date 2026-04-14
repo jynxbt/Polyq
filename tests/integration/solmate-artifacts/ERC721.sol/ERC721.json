@@ -1,0 +1,89 @@
+{
+  "contractName": "ERC721",
+  "abi": [
+    {
+      "type": "function",
+      "name": "ownerOf",
+      "inputs": [{ "name": "id", "type": "uint256" }],
+      "outputs": [{ "name": "owner", "type": "address" }],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "balanceOf",
+      "inputs": [{ "name": "owner", "type": "address" }],
+      "outputs": [{ "name": "", "type": "uint256" }],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "approve",
+      "inputs": [
+        { "name": "spender", "type": "address" },
+        { "name": "id", "type": "uint256" }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferFrom",
+      "inputs": [
+        { "name": "from", "type": "address" },
+        { "name": "to", "type": "address" },
+        { "name": "id", "type": "uint256" }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "safeTransferFrom",
+      "inputs": [
+        { "name": "from", "type": "address" },
+        { "name": "to", "type": "address" },
+        { "name": "id", "type": "uint256" }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setApprovalForAll",
+      "inputs": [
+        { "name": "operator", "type": "address" },
+        { "name": "approved", "type": "bool" }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Transfer",
+      "inputs": [
+        { "name": "from", "type": "address", "indexed": true },
+        { "name": "to", "type": "address", "indexed": true },
+        { "name": "id", "type": "uint256", "indexed": true }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "Approval",
+      "inputs": [
+        { "name": "owner", "type": "address", "indexed": true },
+        { "name": "approved", "type": "address", "indexed": true },
+        { "name": "id", "type": "uint256", "indexed": true }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "ApprovalForAll",
+      "inputs": [
+        { "name": "owner", "type": "address", "indexed": true },
+        { "name": "operator", "type": "address", "indexed": true },
+        { "name": "approved", "type": "bool", "indexed": false }
+      ]
+    }
+  ],
+  "bytecode": "0x"
+}

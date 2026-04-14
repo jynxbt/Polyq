@@ -2,3 +2,13 @@ node_modules/
 dist/
 *.tsbuildinfo
 .DS_Store
+
+# Integration test repos (cloned at test time)
+tests/integration/solmate/
+tests/integration/raydium-idl/
+
+# Integration test output
+tests/integration/.evm-codegen-output/
+tests/integration/.svm-codegen-output/
+tests/.fixtures/
+tests/.chain-fixtures/

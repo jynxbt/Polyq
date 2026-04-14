@@ -80,11 +80,20 @@ function detectFromHardhat(
 }
 
 function findSolFiles(dir: string): string[] {
+  const results: string[] = []
   try {
-    return readdirSync(dir).filter(f => f.endsWith('.sol'))
-  } catch {
-    return []
-  }
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith('.sol')) {
+        results.push(entry.name)
+      } else if (entry.isDirectory() && entry.name !== 'test' && entry.name !== 'lib' && entry.name !== 'node_modules') {
+        // Recurse into subdirectories, skip test/lib
+        for (const nested of findSolFiles(resolve(dir, entry.name))) {
+          results.push(nested)
+        }
+      }
+    }
+  } catch { /* empty */ }
+  return results
 }
 
 export function findEvmSchemaFiles(root: string): string[] {
