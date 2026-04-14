@@ -1,5 +1,5 @@
 import type { Plugin } from 'vite'
-import type { HelmConfig } from '../config/types'
+import type { HelmConfig } from '../../config/types'
 import { helmPolyfills } from './polyfills'
 import { helmIdlSync } from './idl-sync'
 

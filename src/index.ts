@@ -22,12 +22,12 @@ export type { ChainProvider, ChainDetectionResult } from './chains/types'
 export { detectSolanaPackages, detectChainPackages, resolvePolyfillNeeds, SOLANA_PACKAGES, OPTIMIZE_DEPS } from './core/detect'
 
 // Vite plugin (React, Svelte, SvelteKit, Remix, Nuxt, etc.)
-export { helmVite } from './vite/index'
-export { helmPolyfills } from './vite/polyfills'
-export { helmIdlSync } from './vite/idl-sync'
+export { helmVite } from './adapters/vite/index'
+export { helmPolyfills } from './adapters/vite/polyfills'
+export { helmIdlSync } from './adapters/vite/idl-sync'
 
 // Webpack plugin (Next.js, CRA, etc.)
-export { helmWebpack } from './webpack/polyfills'
+export { helmWebpack } from './adapters/webpack/polyfills'
 
 // Codegen
 export { generateFromSchema, generateFromIdl } from './codegen/generate'

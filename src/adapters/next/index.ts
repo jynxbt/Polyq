@@ -1,4 +1,4 @@
-import type { HelmConfig, PolyfillConfig, IdlSyncConfig } from '../config/types'
+import type { HelmConfig, PolyfillConfig, IdlSyncConfig } from '../../config/types'
 import { helmWebpack } from '../webpack/polyfills'
 
 interface NextConfig {

@@ -1,4 +1,4 @@
-import type { HelmConfig, PolyfillConfig, IdlSyncConfig } from '../config/types'
+import type { HelmConfig, PolyfillConfig, IdlSyncConfig } from '../../config/types'
 import { helmPolyfills } from '../vite/polyfills'
 import { helmIdlSync } from '../vite/idl-sync'
 

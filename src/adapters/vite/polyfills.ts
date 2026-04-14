@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
-import type { PolyfillConfig } from '../config/types'
-import { detectSolanaPackages, resolvePolyfillNeeds, OPTIMIZE_DEPS } from '../core/detect'
+import type { PolyfillConfig } from '../../config/types'
+import { detectSolanaPackages, resolvePolyfillNeeds, OPTIMIZE_DEPS } from '../../core/detect'
 
 /**
  * Vite plugin that auto-configures polyfills required for Solana libraries.

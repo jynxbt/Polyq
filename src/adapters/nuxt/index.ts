@@ -1,5 +1,5 @@
 import { defineNuxtModule, addVitePlugin } from '@nuxt/kit'
-import type { HelmConfig } from '../config/types'
+import type { HelmConfig } from '../../config/types'
 import { helmPolyfills } from '../vite/polyfills'
 import { helmIdlSync } from '../vite/idl-sync'
 

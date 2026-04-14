@@ -1,5 +1,5 @@
-import { detectSolanaPackages, resolvePolyfillNeeds, NODE_POLYFILLS } from '../core/detect'
-import type { PolyfillConfig } from '../config/types'
+import { detectSolanaPackages, resolvePolyfillNeeds, NODE_POLYFILLS } from '../../core/detect'
+import type { PolyfillConfig } from '../../config/types'
 
 /**
  * Webpack configuration factory for Solana polyfills.

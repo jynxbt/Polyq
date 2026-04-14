@@ -3,7 +3,7 @@ import { resolve, basename, dirname } from 'pathe'
 import { watch } from 'chokidar'
 import consola from 'consola'
 import type { Plugin, ViteDevServer } from 'vite'
-import type { IdlSyncConfig } from '../config/types'
+import type { IdlSyncConfig } from '../../config/types'
 
 const logger = consola.withTag('helm:idl-sync')
 

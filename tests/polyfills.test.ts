@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { helmPolyfills } from '../src/vite/polyfills'
+import { helmPolyfills } from '../src/adapters/vite/polyfills'
 import type { Plugin, UserConfig } from 'vite'
 
 function callConfigHook(
