@@ -7,14 +7,14 @@ import { detectChain, getChainProvider } from '../../chains'
 export default defineCommand({
   meta: {
     name: 'init',
-    description: 'Initialize Helm configuration',
+    description: 'Initialize Polyq configuration',
   },
   async run() {
     const cwd = process.cwd()
-    const configPath = resolve(cwd, 'helm.config.ts')
+    const configPath = resolve(cwd, 'polyq.config.ts')
 
     if (existsSync(configPath)) {
-      consola.warn('helm.config.ts already exists')
+      consola.warn('polyq.config.ts already exists')
       return
     }
 
@@ -30,9 +30,14 @@ export default defineCommand({
       ? "// Map IDL names to destination paths\n      // my_program: ['packages/sdk/src/idl.json'],"
       : "// Map contract names to destination paths\n      // MyContract: ['src/abi/MyContract.json'],"
 
-    const template = `import { defineHelmConfig } from 'solana-helm'
+    // Chain-specific workspace defaults
+    const validatorTool = chain === 'svm' ? 'solana-test-validator' : 'anvil'
+    const validatorPort = chain === 'svm' ? 8899 : 8545
+    const buildHint = chain === 'svm' ? "// buildFeatures: ['local']," : ''
 
-export default defineHelmConfig({
+    const template = `import { definePolyqConfig } from 'polyq'
+
+export default definePolyqConfig({
   // Detected chain: ${chain}
   programs: ${programsStr},
 
@@ -44,6 +49,17 @@ export default defineHelmConfig({
 
   codegen: {
     outDir: 'generated',
+  },
+
+  workspace: {
+    ${buildHint}
+    validator: {
+      tool: '${validatorTool}',
+      rpcUrl: 'http://127.0.0.1:${validatorPort}',
+    },
+    devServer: {
+      command: '${chain === 'svm' ? 'bun run dev' : 'npm run dev'}',
+    },
   },
 })
 `
