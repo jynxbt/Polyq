@@ -13,6 +13,8 @@ export default defineConfig([
       'remix/index': 'src/remix/index.ts',
       'codegen/index': 'src/codegen/index.ts',
       'workspace/index': 'src/workspace/index.ts',
+      'chains/svm/index': 'src/chains/svm/index.ts',
+      'chains/evm/index': 'src/chains/evm/index.ts',
       'cli/index': 'src/cli/index.ts',
     },
     format: ['esm'],

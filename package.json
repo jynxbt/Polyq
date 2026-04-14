@@ -1,7 +1,7 @@
 {
   "name": "solana-helm",
   "version": "0.1.0",
-  "description": "Vite for Solana — IDL sync, polyfills, codegen, and workspace orchestration",
+  "description": "DX toolkit for Solana and EVM — schema sync, polyfills, codegen, and workspace orchestration",
   "type": "module",
   "bin": {
     "helm": "./dist/cli/index.js"
@@ -15,7 +15,9 @@
     "./sveltekit": "./src/sveltekit/index.ts",
     "./remix": "./src/remix/index.ts",
     "./codegen": "./src/codegen/index.ts",
-    "./workspace": "./src/workspace/index.ts"
+    "./workspace": "./src/workspace/index.ts",
+    "./chains/svm": "./src/chains/svm/index.ts",
+    "./chains/evm": "./src/chains/evm/index.ts"
   },
   "files": [
     "dist",
@@ -81,6 +83,13 @@
     "nuxt",
     "sveltekit",
     "remix",
-    "webpack"
+    "webpack",
+    "evm",
+    "ethereum",
+    "hardhat",
+    "foundry",
+    "viem",
+    "ethers",
+    "abi"
   ]
 }

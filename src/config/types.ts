@@ -1,12 +1,22 @@
+import type { ChainFamily, ProgramType } from '../chains/types'
+
+export type { ChainFamily, ProgramType }
+
 export interface HelmConfig {
-  /** Project root directory (auto-detected from Anchor.toml) */
+  /** Chain family — auto-detected if omitted */
+  chain?: ChainFamily
+
+  /** Project root directory (auto-detected from config files) */
   root?: string
 
-  /** Program definitions */
+  /** Program/contract definitions */
   programs?: Record<string, ProgramConfig>
 
-  /** IDL sync configuration */
-  idlSync?: IdlSyncConfig
+  /** Schema/artifact sync configuration */
+  schemaSync?: SchemaSyncConfig
+
+  /** @deprecated Use schemaSync */
+  idlSync?: SchemaSyncConfig
 
   /** Codegen configuration */
   codegen?: CodegenConfig
@@ -19,32 +29,39 @@ export interface HelmConfig {
 }
 
 export interface ProgramConfig {
-  /** Program type */
-  type: 'anchor' | 'native'
+  /** Program/contract type — determines build/deploy toolchain */
+  type: ProgramType
 
-  /** Path to the program directory (relative to root) */
+  /** Path to the program/contract directory (relative to root) */
   path: string
 
-  /** Path to the IDL JSON file */
+  /** Path to the schema file (IDL for SVM, ABI for EVM) */
+  schema?: string
+
+  /** @deprecated Use schema */
   idl?: string
 
-  /** Program IDs per network */
+  /** Program/contract identifiers per network */
   programId?: Record<string, string>
 
-  /** Deployment config for native programs */
+  /** Deployment config */
   deploy?: {
     keypair?: string
     binary?: string
+    script?: string
   }
 }
 
-export interface IdlSyncConfig {
-  /** Directory to watch for IDL changes (default: target/idl/) */
+export interface SchemaSyncConfig {
+  /** Directory to watch for schema changes */
   watchDir?: string
 
-  /** Map IDL name → destination paths */
+  /** Map schema name → destination paths */
   mapping?: Record<string, string[]>
 }
+
+/** @deprecated Use SchemaSyncConfig */
+export type IdlSyncConfig = SchemaSyncConfig
 
 export interface CodegenConfig {
   /** Output directory for generated TypeScript */
@@ -61,6 +78,7 @@ export interface CodegenConfig {
     pda?: boolean
     errors?: boolean
     events?: boolean
+    abi?: boolean
   }
 }
 
@@ -76,7 +94,7 @@ export interface PolyfillConfig {
 }
 
 export interface WorkspaceConfig {
-  /** Anchor build features */
+  /** Build features (e.g., ['local'] for Solana) */
   buildFeatures?: string[]
 
   /** Docker compose configuration */
@@ -86,8 +104,10 @@ export interface WorkspaceConfig {
     services?: string[]
   }
 
-  /** Solana validator settings */
+  /** Local node/validator settings */
   validator?: {
+    /** Tool to use (auto-detected from chain: 'solana-test-validator', 'anvil', 'hardhat') */
+    tool?: string
     rpcUrl?: string
     flags?: string[]
     logFile?: string
@@ -124,7 +144,7 @@ export interface WorkspaceConfig {
 
 export type ResolvedHelmConfig = Required<
   Pick<HelmConfig, 'root'>
-> & HelmConfig
+> & HelmConfig & { _chain: ChainFamily }
 
 export function defineHelmConfig(config: HelmConfig): HelmConfig {
   return config

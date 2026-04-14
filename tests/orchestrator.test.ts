@@ -5,6 +5,7 @@ import type { ResolvedHelmConfig } from '../src/config/types'
 function makeConfig(overrides?: Partial<ResolvedHelmConfig>): ResolvedHelmConfig {
   return {
     root: '/tmp/test-project',
+    _chain: 'svm' as const,
     programs: {
       myProgram: {
         type: 'anchor',

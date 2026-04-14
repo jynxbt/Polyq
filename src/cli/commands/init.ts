@@ -2,7 +2,7 @@ import { defineCommand } from 'citty'
 import { existsSync, writeFileSync } from 'node:fs'
 import { resolve } from 'pathe'
 import consola from 'consola'
-import { detectProgramsFromAnchor } from '../../config/resolve'
+import { detectChain, getChainProvider } from '../../chains'
 
 export default defineCommand({
   meta: {
@@ -18,21 +18,27 @@ export default defineCommand({
       return
     }
 
-    // Auto-detect programs
-    const programs = detectProgramsFromAnchor(cwd)
+    const chain = detectChain(cwd)
+    const provider = getChainProvider(chain)
+    const programs = provider.detectPrograms(cwd)
     const programsStr = programs
       ? JSON.stringify(programs, null, 4).replace(/"(\w+)":/g, '$1:')
-      : '// No Anchor.toml found — add programs manually'
+      : `// No ${chain === 'svm' ? 'Anchor.toml' : 'foundry.toml / hardhat.config'} found — add programs manually`
+
+    const syncKey = chain === 'svm' ? 'idlSync' : 'schemaSync'
+    const syncComment = chain === 'svm'
+      ? "// Map IDL names to destination paths\n      // my_program: ['packages/sdk/src/idl.json'],"
+      : "// Map contract names to destination paths\n      // MyContract: ['src/abi/MyContract.json'],"
 
     const template = `import { defineHelmConfig } from 'solana-helm'
 
 export default defineHelmConfig({
+  // Detected chain: ${chain}
   programs: ${programsStr},
 
-  idlSync: {
-    // Map IDL names to destination paths
+  ${syncKey}: {
     mapping: {
-      // dynamic_bonding_curve: ['packages/ts-sdk/src/idl.json'],
+      ${syncComment}
     },
   },
 
@@ -43,7 +49,7 @@ export default defineHelmConfig({
 `
 
     writeFileSync(configPath, template, 'utf-8')
-    consola.success(`Created ${configPath}`)
-    consola.info('Edit the config to set up IDL sync mappings and codegen output')
+    consola.success(`Created ${configPath} (${chain} project)`)
+    consola.info('Edit the config to set up schema sync mappings and codegen output')
   },
 })

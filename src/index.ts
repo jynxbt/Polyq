@@ -1,18 +1,25 @@
-// Helm — Vite for Solana
-// Framework-agnostic Solana DX: polyfills, IDL sync, codegen, workspace orchestration
+// Helm — DX toolkit for Solana and EVM
+// Polyfills, schema sync, codegen, and workspace orchestration
 
 export { defineHelmConfig } from './config/types'
 export type {
   HelmConfig,
   ProgramConfig,
+  SchemaSyncConfig,
   IdlSyncConfig,
   CodegenConfig,
   PolyfillConfig,
   WorkspaceConfig,
+  ChainFamily,
+  ProgramType,
 } from './config/types'
 
-// Core (shared across Vite + webpack)
-export { detectSolanaPackages, resolvePolyfillNeeds, SOLANA_PACKAGES, OPTIMIZE_DEPS } from './core/detect'
+// Chain detection
+export { detectChain, getChainProvider, findProjectRoot } from './chains'
+export type { ChainProvider, ChainDetectionResult } from './chains/types'
+
+// Core (shared detection)
+export { detectSolanaPackages, detectChainPackages, resolvePolyfillNeeds, SOLANA_PACKAGES, OPTIMIZE_DEPS } from './core/detect'
 
 // Vite plugin (React, Svelte, SvelteKit, Remix, Nuxt, etc.)
 export { helmVite } from './vite/index'
@@ -23,7 +30,7 @@ export { helmIdlSync } from './vite/idl-sync'
 export { helmWebpack } from './webpack/polyfills'
 
 // Codegen
-export { generateFromIdl } from './codegen/generate'
+export { generateFromSchema, generateFromIdl } from './codegen/generate'
 
 // Config
 export { loadConfig } from './config/loader'

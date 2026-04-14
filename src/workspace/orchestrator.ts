@@ -31,6 +31,7 @@ export function buildStages(
     throw new Error('No workspace config. Run `helm init` or add a workspace section to helm.config.ts')
   }
 
+  const chain = config._chain ?? 'svm'
   const stages: Stage[] = []
 
   // Stage 1: Docker
@@ -42,24 +43,28 @@ export function buildStages(
     }))
   }
 
-  // Stage 2: Validator
+  // Stage 2: Validator / local node
   if (options.reset) {
     stages.push(createValidatorResetStage({
       rpcUrl: ws.validator?.rpcUrl,
+      tool: ws.validator?.tool,
       flags: ws.validator?.flags,
       logFile: ws.validator?.logFile,
       root: config.root,
+      chain,
     }))
   } else {
     stages.push(createValidatorStage({
       rpcUrl: ws.validator?.rpcUrl,
+      tool: ws.validator?.tool,
       flags: ws.validator?.flags,
       logFile: ws.validator?.logFile,
       root: config.root,
+      chain,
     }))
   }
 
-  // Stage 3 & 4: Program build + deploy (skip in --quick mode)
+  // Stage 3 & 4: Program/contract build + deploy (skip in --quick mode)
   if (!options.quick && config.programs) {
     stages.push(createProgramsBuildStage({
       programs: config.programs,
@@ -67,16 +72,18 @@ export function buildStages(
       rpcUrl: ws.validator?.rpcUrl,
       parallel: true,
       root: config.root,
+      chain,
     }))
 
     stages.push(createProgramsDeployStage({
       programs: config.programs,
       rpcUrl: ws.validator?.rpcUrl,
       root: config.root,
+      chain,
     }))
   }
 
-  // Stage 5: PDA initialization (skip in --quick mode)
+  // Stage 5: Initialization (skip in --quick mode)
   if (!options.quick && ws.init) {
     stages.push(createInitStage({
       script: ws.init.script,

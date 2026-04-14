@@ -1,76 +1,77 @@
 import { defineCommand } from 'citty'
 import { resolve } from 'pathe'
 import consola from 'consola'
-import { generateFromIdl } from '../../codegen/generate'
+import { generateFromSchema } from '../../codegen/generate'
+import { detectChain, getChainProvider } from '../../chains'
 
 export default defineCommand({
   meta: {
     name: 'codegen',
-    description: 'Generate TypeScript client from Anchor IDLs',
+    description: 'Generate TypeScript client from contract schemas (IDL/ABI)',
   },
   args: {
     idl: {
       type: 'string',
-      description: 'Path to IDL JSON file',
+      description: 'Path to schema file (IDL or ABI JSON)',
     },
     out: {
       type: 'string',
       description: 'Output directory',
       default: 'generated',
     },
+    chain: {
+      type: 'string',
+      description: 'Chain family: svm or evm (auto-detected)',
+    },
     watch: {
       type: 'boolean',
-      description: 'Watch IDL files and regenerate on change',
+      description: 'Watch schema files and regenerate on change',
       default: false,
     },
   },
   async run({ args }) {
     const cwd = process.cwd()
     const outDir = resolve(cwd, args.out)
+    const chain = (args.chain as 'svm' | 'evm') ?? detectChain(cwd)
+    const provider = getChainProvider(chain)
 
     if (args.idl) {
-      const idlPath = resolve(cwd, args.idl)
-      consola.info(`Generating from ${idlPath}...`)
-      generateFromIdl(idlPath, outDir)
+      const schemaPath = resolve(cwd, args.idl)
+      consola.info(`Generating from ${schemaPath} (${chain})...`)
+      generateFromSchema(schemaPath, outDir, undefined, chain)
       consola.success('Done')
       return
     }
 
-    // Auto-detect IDLs from target/idl/
-    const { existsSync, readdirSync } = await import('node:fs')
-    const idlDir = resolve(cwd, 'target/idl')
+    // Auto-detect schema files using the chain provider
+    const schemaFiles = provider.findSchemaFiles(cwd)
 
-    if (!existsSync(idlDir)) {
-      consola.error('No IDL directory found at target/idl/. Run `anchor build` first.')
+    if (schemaFiles.length === 0) {
+      const artifactDir = provider.defaultArtifactDir
+      consola.error(`No schema files found in ${artifactDir}/. Build your programs/contracts first.`)
       process.exit(1)
     }
 
-    const idlFiles = readdirSync(idlDir).filter(f => f.endsWith('.json'))
-    if (idlFiles.length === 0) {
-      consola.error('No IDL files found in target/idl/')
-      process.exit(1)
+    for (const file of schemaFiles) {
+      const fileName = file.split('/').pop()
+      consola.info(`Generating from ${fileName}...`)
+      generateFromSchema(file, outDir, undefined, chain)
     }
 
-    for (const file of idlFiles) {
-      const idlPath = resolve(idlDir, file)
-      consola.info(`Generating from ${file}...`)
-      generateFromIdl(idlPath, outDir)
-    }
-
-    consola.success(`Generated clients for ${idlFiles.length} program(s)`)
+    consola.success(`Generated clients for ${schemaFiles.length} program(s)`)
 
     if (args.watch) {
+      const artifactDir = resolve(cwd, provider.defaultArtifactDir)
       const { watch } = await import('chokidar')
-      consola.info(`Watching ${idlDir} for changes...`)
+      consola.info(`Watching ${artifactDir} for changes...`)
 
-      const watcher = watch(idlDir, { ignoreInitial: true })
+      const watcher = watch(artifactDir, { ignoreInitial: true })
       watcher.on('change', (filePath) => {
         const fileName = filePath.split('/').pop()
-        consola.info(`IDL changed: ${fileName}`)
-        generateFromIdl(filePath, outDir)
+        consola.info(`Schema changed: ${fileName}`)
+        generateFromSchema(filePath, outDir, undefined, chain)
       })
 
-      // Keep process alive
       process.on('SIGINT', () => {
         watcher.close()
         process.exit(0)
