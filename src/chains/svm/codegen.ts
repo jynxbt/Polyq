@@ -363,7 +363,7 @@ function generateInstructions(idl: AnchorIdl): string {
     if (hasArgs) {
       lines.push(`export interface ${argsInterfaceName} {`)
       for (const arg of ix.args) {
-        lines.push(`  ${camelCase(arg.name)}: ${mapType(arg.type)}`)
+        lines.push(`  ${camelCase(arg.name)}: ${mapType(arg.type, 'types.')}`)
       }
       lines.push('}')
       lines.push('')
@@ -733,7 +733,7 @@ function generateBarrel(filePaths: string[]): string {
 
 // --- Type Mapping ---
 
-function mapType(t: AnchorType): string {
+function mapType(t: AnchorType, typePrefix = ''): string {
   if (typeof t === 'string') {
     switch (t) {
       case 'bool': return 'boolean'
@@ -752,19 +752,19 @@ function mapType(t: AnchorType): string {
   }
 
   if ('array' in t) {
-    return `${mapType(t.array[0])}[]`
+    return `${mapType(t.array[0], typePrefix)}[]`
   }
   if ('vec' in t) {
-    return `${mapType(t.vec)}[]`
+    return `${mapType(t.vec, typePrefix)}[]`
   }
   if ('option' in t) {
-    return `${mapType(t.option)} | null`
+    return `${mapType(t.option, typePrefix)} | null`
   }
   if ('coption' in t) {
-    return `${mapType(t.coption)} | null`
+    return `${mapType(t.coption, typePrefix)} | null`
   }
   if ('defined' in t) {
-    return t.defined.name
+    return `${typePrefix}${t.defined.name}`
   }
 
   return 'unknown'
