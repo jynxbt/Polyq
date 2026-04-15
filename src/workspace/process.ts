@@ -61,19 +61,32 @@ export async function run(
     env?: Record<string, string>
     label?: string
     quiet?: boolean
+    /** Timeout in ms. Default: 5 minutes. Set 0 for no timeout. */
+    timeout?: number
   },
 ): Promise<RunResult> {
   const label = options?.label ?? command
+  const timeout = options?.timeout ?? 300_000  // 5 minutes default
+
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: options?.cwd,
       env: { ...process.env, ...options?.env },
       stdio: options?.quiet ? 'pipe' : 'inherit',
-      shell: true,
     })
 
     let stdout = ''
     let stderr = ''
+    let timedOut = false
+
+    // Kill process if it exceeds timeout
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (timeout > 0) {
+      timer = setTimeout(() => {
+        timedOut = true
+        child.kill('SIGKILL')
+      }, timeout)
+    }
 
     if (options?.quiet) {
       child.stdout?.on('data', (d) => { stdout += d.toString() })
@@ -81,11 +94,17 @@ export async function run(
     }
 
     child.on('error', (err) => {
+      if (timer) clearTimeout(timer)
       reject(new Error(`${label} failed to start: ${err.message}`))
     })
 
     child.on('close', (code) => {
-      resolve({ exitCode: code ?? 1, stdout, stderr })
+      if (timer) clearTimeout(timer)
+      if (timedOut) {
+        resolve({ exitCode: 124, stdout, stderr: `${label} timed out after ${timeout}ms` })
+      } else {
+        resolve({ exitCode: code ?? 1, stdout, stderr })
+      }
     })
   })
 }

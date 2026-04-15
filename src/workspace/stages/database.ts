@@ -1,10 +1,51 @@
 import { existsSync, readdirSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { resolve } from 'pathe'
 import consola from 'consola'
 import type { Stage } from '../stage'
-import { run, runSync } from '../process'
+import { run } from '../process'
+// Note: psql commands use the local psql() helper (not runSync) to avoid
+// interpolating database URLs into shell command strings.
 
 const logger = consola.withTag('polyq:database')
+
+/**
+ * Run psql safely by passing the connection URL via PGHOST/PGPORT/PGUSER/
+ * PGPASSWORD/PGDATABASE environment variables instead of interpolating
+ * into a shell command string. Prevents command injection and hides
+ * credentials from process listings.
+ */
+function psql(
+  url: string,
+  args: string[],
+  options?: { timeout?: number },
+): { ok: boolean, output: string } {
+  // Parse URL into individual components for env vars
+  const parsed = new URL(url)
+  const pgEnv: Record<string, string> = {
+    ...process.env,
+    PGHOST: parsed.hostname,
+    PGPORT: parsed.port || '5432',
+    PGDATABASE: parsed.pathname.replace('/', ''),
+  }
+  if (parsed.username) pgEnv.PGUSER = decodeURIComponent(parsed.username)
+  if (parsed.password) pgEnv.PGPASSWORD = decodeURIComponent(parsed.password)
+
+  try {
+    const output = execSync(
+      ['psql', ...args].join(' '),
+      {
+        env: pgEnv,
+        timeout: options?.timeout ?? 10_000,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      },
+    )
+    return { ok: true, output: output.trim() }
+  } catch (e: any) {
+    return { ok: false, output: e.stderr?.toString() ?? e.message ?? '' }
+  }
+}
 
 export interface DatabaseStageOptions {
   /** PostgreSQL connection URL */
@@ -33,23 +74,27 @@ export function createDatabaseStage(options: DatabaseStageOptions): Stage {
 
     async check() {
       // Check if we can connect and if a known table exists
-      const { ok } = runSync(
-        `psql "${options.url}" -c "SELECT 1 FROM zenids LIMIT 0" 2>/dev/null`,
-        { timeout: 5000 },
-      )
+      const { ok } = psql(options.url, [
+        '-c', 'SELECT 1 FROM zenids LIMIT 0',
+      ], { timeout: 5000 })
       return ok
     },
 
     async start() {
       // Enable extensions
       for (const ext of extensions) {
-        logger.info(`Enabling extension: ${ext}`)
-        const { ok } = runSync(
-          `psql "${options.url}" -c "CREATE EXTENSION IF NOT EXISTS ${ext}"`,
-          { timeout: 10_000 },
-        )
+        // Sanitize extension name — only allow alphanumeric and underscore
+        const safeExt = ext.replace(/[^a-zA-Z0-9_]/g, '')
+        if (safeExt !== ext) {
+          logger.warn(`Skipping unsafe extension name: "${ext}"`)
+          continue
+        }
+        logger.info(`Enabling extension: ${safeExt}`)
+        const { ok } = psql(options.url, [
+          '-c', `CREATE EXTENSION IF NOT EXISTS "${safeExt}"`,
+        ])
         if (!ok) {
-          logger.warn(`Failed to enable extension: ${ext}`)
+          logger.warn(`Failed to enable extension: ${safeExt}`)
         }
       }
 
@@ -63,10 +108,9 @@ export function createDatabaseStage(options: DatabaseStageOptions): Stage {
           logger.info(`Running ${files.length} migrations...`)
           for (const file of files) {
             const filePath = resolve(migrationsDir, file)
-            const { ok, output } = runSync(
-              `psql -v ON_ERROR_STOP=1 "${options.url}" -f "${filePath}"`,
-              { timeout: 30_000 },
-            )
+            const { ok, output } = psql(options.url, [
+              '-v', 'ON_ERROR_STOP=1', '-f', filePath,
+            ], { timeout: 30_000 })
             if (!ok) {
               // Some migrations may fail if already applied — warn but continue
               logger.debug(`Migration ${file}: ${output}`)
@@ -82,10 +126,9 @@ export function createDatabaseStage(options: DatabaseStageOptions): Stage {
         const script = options.seed.script
 
         // Check if already seeded
-        const { ok: seeded } = runSync(
-          `psql "${options.url}" -c "SELECT 1 FROM zenids WHERE handle LIKE 'local_%' LIMIT 1" 2>/dev/null`,
-          { timeout: 5000 },
-        )
+        const { ok: seeded } = psql(options.url, [
+          '-c', "SELECT 1 FROM zenids WHERE handle LIKE 'local_%' LIMIT 1",
+        ], { timeout: 5000 })
 
         if (!seeded) {
           logger.info('Seeding data...')
@@ -136,15 +179,14 @@ export function createDatabaseResetStage(options: DatabaseStageOptions): Stage {
 
       logger.info(`Dropping database: ${safeDbName}`)
 
-      // Terminate existing connections (identifier quoted to prevent injection)
-      runSync(
-        `psql "${maintenanceUrl}" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${safeDbName}' AND pid <> pg_backend_pid()"`,
-        { timeout: 10_000 },
-      )
+      // Terminate existing connections
+      psql(maintenanceUrl, [
+        '-c', `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${safeDbName}' AND pid <> pg_backend_pid()`,
+      ])
 
-      // Drop and recreate (using quoted identifiers)
-      runSync(`psql "${maintenanceUrl}" -c 'DROP DATABASE IF EXISTS "${safeDbName}"'`, { timeout: 10_000 })
-      runSync(`psql "${maintenanceUrl}" -c 'CREATE DATABASE "${safeDbName}"'`, { timeout: 10_000 })
+      // Drop and recreate
+      psql(maintenanceUrl, ['-c', `DROP DATABASE IF EXISTS "${safeDbName}"`])
+      psql(maintenanceUrl, ['-c', `CREATE DATABASE "${safeDbName}"`])
 
       logger.success(`Database ${dbName} recreated`)
 
