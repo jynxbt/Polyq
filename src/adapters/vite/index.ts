@@ -28,9 +28,10 @@ export function polyqVite(config?: PolyqConfig): Plugin[] {
   // Always add polyfills (auto-detects if Solana deps exist)
   plugins.push(polyqPolyfills(config?.polyfills))
 
-  // Add IDL sync if configured or if we can auto-detect
-  if (config?.idlSync) {
-    plugins.push(polyqIdlSync(config.idlSync))
+  // Add schema/IDL sync if configured (schemaSync takes precedence)
+  const sync = config?.schemaSync ?? config?.idlSync
+  if (sync) {
+    plugins.push(polyqIdlSync(sync))
   }
 
   return plugins

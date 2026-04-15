@@ -21,8 +21,11 @@ description: DX toolkit for Solana and EVM — polyfills, schema sync, codegen, 
 ## API Reference
 
 - [Vite Plugin](api/vite-plugin.md) — `polyqVite()`, `polyqPolyfills()`, `polyqIdlSync()`
+- [Webpack Plugin](api/webpack-plugin.md) — `polyqWebpack()` for raw webpack projects
 - [Next.js Adapter](api/next-adapter.md) — `withPolyq()` for webpack + Turbopack
 - [Nuxt Module](api/nuxt-module.md) — Nuxt module with auto-config loading
+- [SvelteKit Adapter](api/sveltekit-adapter.md) — `polyqSvelteKit()` for SvelteKit
+- [Remix Adapter](api/remix-adapter.md) — `polyqRemix()` for Remix
 - [Codegen API](api/codegen-api.md) — `generateFromSchema()`, type mappings
 - [Chain Detection](api/chain-detection.md) — `detectChain()`, `ChainProvider` interface
 
