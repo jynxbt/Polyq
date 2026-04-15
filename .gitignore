@@ -3,12 +3,9 @@ dist/
 *.tsbuildinfo
 .DS_Store
 
-# Integration test repos (cloned at test time)
-tests/integration/solmate/
-tests/integration/raydium-idl/
-
-# Integration test output
-tests/integration/.evm-codegen-output/
-tests/integration/.svm-codegen-output/
+# Test fixtures (created at runtime)
 tests/.fixtures/
 tests/.chain-fixtures/
+tests/.config-fixtures/
+tests/.idl-sync-fixtures/
+tests/.webpack-fixtures/

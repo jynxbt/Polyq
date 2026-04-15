@@ -89,9 +89,9 @@ export default defineNuxtConfig({
 // webpack.config.js
 import { polyqWebpack } from 'polyq/webpack'
 
-const applyHelm = polyqWebpack()
+const applyPolyq = polyqWebpack()
 
-export default applyHelm({
+export default applyPolyq({
   entry: './src/index.ts',
   // ...
 })
@@ -185,9 +185,9 @@ Replaces hundreds of lines of shell scripts with a single config:
 
 ```ts
 // polyq.config.ts
-import { defineHelmConfig } from 'polyq'
+import { definePolyqConfig } from 'polyq'
 
-export default defineHelmConfig({
+export default definePolyqConfig({
   workspace: {
     buildFeatures: ['local'],
     docker: { services: ['postgres'] },

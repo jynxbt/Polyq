@@ -4,7 +4,7 @@ import { defineCommand, runMain } from 'citty'
 const main = defineCommand({
   meta: {
     name: 'polyq',
-    version: '0.1.0',
+    version: '0.2.0',
     description: 'DX toolkit for Solana and EVM — schema sync, polyfills, codegen, and workspace orchestration',
   },
   subCommands: {
