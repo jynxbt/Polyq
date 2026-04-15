@@ -1,10 +1,6 @@
-<p align="center">
-  <img src="polyq.svg" alt="Polyq" width="120" />
-</p>
+<img src="polyq.svg" alt="Polyq" width="120" />
 
-<h1 align="center">Polyq</h1>
-
-<p align="center">Chain-agnostic DX toolkit for blockchain frontends — polyfills, schema sync, codegen, and workspace orchestration.</p>
+Chain-agnostic DX toolkit for blockchain frontends — polyfills, schema sync, codegen, and workspace orchestration.
 
 Works with **React, Next.js, Svelte, SvelteKit, Remix, Nuxt**, or any Vite/webpack project.
 
