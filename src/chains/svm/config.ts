@@ -55,9 +55,61 @@ export function detectProgramsFromAnchor(
 }
 
 export function findSvmSchemaFiles(root: string): string[] {
+  const found = new Set<string>()
+
+  // 1. Check default Anchor build output
   const idlDir = resolve(root, 'target/idl')
-  if (!existsSync(idlDir)) return []
-  return readdirSync(idlDir)
-    .filter(f => f.endsWith('.json'))
-    .map(f => resolve(idlDir, f))
+  if (existsSync(idlDir)) {
+    for (const f of readdirSync(idlDir).filter(f => f.endsWith('.json'))) {
+      found.add(resolve(idlDir, f))
+    }
+  }
+
+  // 2. Check schema paths from detected programs
+  const programs = detectProgramsFromAnchor(root)
+  if (programs) {
+    for (const prog of Object.values(programs)) {
+      const schemaPath = resolve(root, prog.schema ?? '')
+      if (schemaPath.endsWith('.json') && existsSync(schemaPath)) {
+        found.add(schemaPath)
+      }
+    }
+  }
+
+  // 3. Scan common IDL locations used by monorepos
+  const commonDirs = ['idl', 'idls', 'app/idl', 'src/idl', 'packages/sdk/src', 'packages/ts-sdk/src']
+
+  // Also scan packages/*/src for monorepo patterns
+  const packagesDir = resolve(root, 'packages')
+  if (existsSync(packagesDir)) {
+    try {
+      for (const pkg of readdirSync(packagesDir, { withFileTypes: true })) {
+        if (pkg.isDirectory()) {
+          const srcDir = resolve(packagesDir, pkg.name, 'src')
+          if (existsSync(srcDir) && !commonDirs.includes(`packages/${pkg.name}/src`)) {
+            commonDirs.push(`packages/${pkg.name}/src`)
+          }
+        }
+      }
+    } catch { /* not readable */ }
+  }
+  for (const dir of commonDirs) {
+    const fullDir = resolve(root, dir)
+    if (existsSync(fullDir)) {
+      try {
+        for (const f of readdirSync(fullDir).filter(f => f.endsWith('.json'))) {
+          // Quick check: does it look like an Anchor IDL?
+          try {
+            const content = readFileSync(resolve(fullDir, f), 'utf-8')
+            const parsed = JSON.parse(content)
+            if (parsed.metadata?.name && Array.isArray(parsed.instructions)) {
+              found.add(resolve(fullDir, f))
+            }
+          } catch { /* not a valid IDL */ }
+        }
+      } catch { /* dir not readable */ }
+    }
+  }
+
+  return [...found]
 }
