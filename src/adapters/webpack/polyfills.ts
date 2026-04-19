@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
-import { detectSolanaPackages, resolvePolyfillNeeds, NODE_POLYFILLS } from '../../core/detect'
 import type { PolyfillConfig } from '../../config/types'
+import { detectSolanaPackages, resolvePolyfillNeeds } from '../../core/detect'
 
 const esmRequire = createRequire(import.meta.url)
 
@@ -53,11 +53,17 @@ export function polyqWebpack(options?: PolyfillConfig) {
     if (!webpackConfig.resolve.fallback) webpackConfig.resolve.fallback = {}
 
     if (needs.buffer) {
-      try { webpackConfig.resolve.fallback.buffer = esmRequire.resolve('buffer/') } catch {}
+      try {
+        webpackConfig.resolve.fallback.buffer = esmRequire.resolve('buffer/')
+      } catch {}
     }
     if (needs.crypto) {
-      try { webpackConfig.resolve.fallback.crypto = esmRequire.resolve('crypto-browserify') } catch {}
-      try { webpackConfig.resolve.fallback.stream = esmRequire.resolve('stream-browserify') } catch {}
+      try {
+        webpackConfig.resolve.fallback.crypto = esmRequire.resolve('crypto-browserify')
+      } catch {}
+      try {
+        webpackConfig.resolve.fallback.stream = esmRequire.resolve('stream-browserify')
+      } catch {}
     }
 
     // ProvidePlugin — inject globals without explicit imports
@@ -68,10 +74,10 @@ export function polyqWebpack(options?: PolyfillConfig) {
       const provides: Record<string, string[]> = {}
 
       if (needs.buffer) {
-        provides['Buffer'] = ['buffer', 'Buffer']
+        provides.Buffer = ['buffer', 'Buffer']
       }
       if (needs.process) {
-        provides['process'] = ['process/browser']
+        provides.process = ['process/browser']
       }
 
       if (Object.keys(provides).length > 0) {

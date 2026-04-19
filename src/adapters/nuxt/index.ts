@@ -1,9 +1,10 @@
-import { defineNuxtModule, addVitePlugin, useNuxt } from '@nuxt/kit'
+import { addVitePlugin, defineNuxtModule, useNuxt } from '@nuxt/kit'
 import consola from 'consola'
 import type { PolyqConfig } from '../../config/types'
-import { polyqPolyfills } from '../vite/polyfills'
-import { polyqIdlSync } from '../vite/idl-sync'
 import { OPTIMIZE_DEPS } from '../../core/detect'
+import { errorMessage } from '../../utils/error'
+import { polyqPolyfills } from '../vite/polyfills'
+import { polyqSchemaSync } from '../vite/schema-sync'
 
 /**
  * Nuxt module for Polyq.
@@ -35,9 +36,7 @@ export default defineNuxtModule<PolyqConfig>({
   defaults: {},
   async setup(options: PolyqConfig) {
     const nuxt = useNuxt()
-
-    // Merge schemaSync and idlSync (schemaSync takes precedence)
-    const sync = options.schemaSync ?? options.idlSync
+    const sync = options.schemaSync
 
     // If no inline options, try loading polyq.config.ts
     if (!options.polyfills && !sync) {
@@ -45,16 +44,20 @@ export default defineNuxtModule<PolyqConfig>({
         const { loadConfig } = await import('../../config/loader')
         const config = await loadConfig(nuxt.options.rootDir)
         if (config.polyfills) options.polyfills = config.polyfills
-        if (config.schemaSync ?? config.idlSync) {
-          const loaded = config.schemaSync ?? config.idlSync
-          if (loaded && !sync) {
-            addVitePlugin(polyqIdlSync(loaded))
-          }
+        if (config.schemaSync) {
+          addVitePlugin(polyqSchemaSync(config.schemaSync))
         }
-      } catch (e: any) {
-        // Missing config file is fine — but syntax errors should be visible
-        if (e?.code !== 'MODULE_NOT_FOUND' && e?.code !== 'ERR_MODULE_NOT_FOUND') {
-          consola.warn(`Failed to load polyq.config.ts: ${e?.message ?? e}`)
+      } catch (e: unknown) {
+        // Missing config file is the "nothing configured, use defaults" path — silent OK.
+        // Anything else (syntax error, validation failure, unexpected throw) must be
+        // surfaced loudly so the user sees the real cause at `nuxt dev` startup instead
+        // of having polyfills silently not load.
+        const code = (e as { code?: string })?.code
+        if (code === 'MODULE_NOT_FOUND' || code === 'ERR_MODULE_NOT_FOUND') {
+          // No config file at all — carry on with inline defaults.
+        } else {
+          consola.error(`Failed to load polyq.config.ts: ${errorMessage(e)}`)
+          throw e
         }
       }
     }
@@ -62,9 +65,9 @@ export default defineNuxtModule<PolyqConfig>({
     // Add polyfill plugin
     addVitePlugin(polyqPolyfills(options.polyfills))
 
-    // Add schema/IDL sync if configured inline
+    // Add schema sync if configured inline
     if (sync) {
-      addVitePlugin(polyqIdlSync(sync))
+      addVitePlugin(polyqSchemaSync(sync))
     }
 
     // Directly merge optimizeDeps via hook — ensures pre-bundling works

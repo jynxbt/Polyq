@@ -1,17 +1,17 @@
 import type { Plugin } from 'vite'
 import type { PolyqConfig } from '../../config/types'
 import { polyqPolyfills } from './polyfills'
-import { polyqIdlSync } from './idl-sync'
+import { polyqSchemaSync } from './schema-sync'
 
 export { polyqPolyfills } from './polyfills'
-export { polyqIdlSync } from './idl-sync'
+export { polyqSchemaSync } from './schema-sync'
 
 /**
  * Main Vite plugin factory for Polyq.
  *
  * Returns an array of Vite plugins that handle:
  * - Automatic Solana polyfills (Buffer, global, optimizeDeps)
- * - IDL file watching + HMR sync
+ * - Schema (IDL/ABI) file watching + HMR sync
  *
  * Usage:
  * ```ts
@@ -28,10 +28,9 @@ export function polyqVite(config?: PolyqConfig): Plugin[] {
   // Always add polyfills (auto-detects if Solana deps exist)
   plugins.push(polyqPolyfills(config?.polyfills))
 
-  // Add schema/IDL sync if configured (schemaSync takes precedence)
-  const sync = config?.schemaSync ?? config?.idlSync
-  if (sync) {
-    plugins.push(polyqIdlSync(sync))
+  // Add schema sync if configured
+  if (config?.schemaSync) {
+    plugins.push(polyqSchemaSync(config.schemaSync))
   }
 
   return plugins

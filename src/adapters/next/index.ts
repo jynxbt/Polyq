@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import type { PolyqConfig, PolyfillConfig, IdlSyncConfig } from '../../config/types'
+import type { PolyfillConfig, SchemaSyncConfig } from '../../config/types'
 import { detectSolanaPackages, resolvePolyfillNeeds } from '../../core/detect'
 import { polyqWebpack } from '../webpack/polyfills'
 
@@ -17,7 +17,7 @@ interface NextConfig {
 
 interface PolyqNextOptions {
   polyfills?: PolyfillConfig
-  idlSync?: IdlSyncConfig
+  schemaSync?: SchemaSyncConfig
 }
 
 /**
@@ -43,10 +43,7 @@ interface PolyqNextOptions {
  * })
  * ```
  */
-export function withPolyq(
-  nextConfig: NextConfig = {},
-  options?: PolyqNextOptions,
-): NextConfig {
+export function withPolyq(nextConfig: NextConfig = {}, options?: PolyqNextOptions): NextConfig {
   const mode = options?.polyfills?.mode ?? 'auto'
   const detected = mode === 'auto' ? detectSolanaPackages(process.cwd()) : []
   const hasSolana = mode === 'manual' || detected.length > 0
@@ -75,10 +72,10 @@ export function withPolyq(
   // Resolve stub from the package — works both from source and node_modules.
   let stubPath: string
   try {
-    stubPath = esmRequire.resolve('polyq/stub.js')
+    stubPath = esmRequire.resolve('polyq/stub.cjs')
   } catch {
     // Fallback for local dev / linked packages
-    stubPath = esmRequire.resolve('../../../stub.js')
+    stubPath = esmRequire.resolve('../../../stub.cjs')
   }
   const nodeStubs = ['fs', 'net', 'tls']
   for (const mod of nodeStubs) {
@@ -88,7 +85,7 @@ export function withPolyq(
   }
 
   if (needs.buffer) {
-    turbopack.resolveAlias['buffer'] = { browser: 'buffer/' }
+    turbopack.resolveAlias.buffer = { browser: 'buffer/' }
   }
 
   // --- Webpack config (fallback for non-Turbopack builds) ---

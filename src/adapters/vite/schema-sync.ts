@@ -1,35 +1,36 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { resolve, relative, basename, dirname } from 'pathe'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { watch } from 'chokidar'
 import consola from 'consola'
+import { basename, dirname, relative, resolve } from 'pathe'
 import type { Plugin, ViteDevServer } from 'vite'
-import type { IdlSyncConfig } from '../../config/types'
+import type { SchemaSyncConfig } from '../../config/types'
 
-const logger = consola.withTag('polyq:idl-sync')
+const logger = consola.withTag('polyq:schema-sync')
 
 /**
- * Vite plugin that watches Anchor IDL output and syncs to configured destinations.
+ * Vite plugin that watches schema output (Anchor IDLs, EVM ABIs) and syncs to
+ * configured destinations.
  *
- * On IDL change:
- * 1. Copies the IDL JSON to each mapped destination
+ * On schema change:
+ * 1. Copies the JSON to each mapped destination
  * 2. Invalidates the Vite module graph for the destination files
  * 3. Triggers HMR so the frontend picks up new types without a page refresh
  */
-export function polyqIdlSync(options?: IdlSyncConfig): Plugin {
+export function polyqSchemaSync(options?: SchemaSyncConfig): Plugin {
   const watchDir = options?.watchDir ?? 'target/idl'
   const mapping = options?.mapping ?? {}
   let server: ViteDevServer | undefined
   let watcher: ReturnType<typeof watch> | undefined
 
   return {
-    name: 'polyq:idl-sync',
+    name: 'polyq:schema-sync',
 
     configResolved(config) {
-      // Resolve watch directory relative to project root
       const resolvedWatchDir = resolve(config.root, watchDir)
-
       if (!existsSync(resolvedWatchDir)) {
-        logger.info(`IDL directory ${resolvedWatchDir} does not exist yet — will watch when created`)
+        logger.info(
+          `Schema directory ${resolvedWatchDir} does not exist yet — will watch when created`,
+        )
       }
     },
 
@@ -46,46 +47,42 @@ export function polyqIdlSync(options?: IdlSyncConfig): Plugin {
         },
       })
 
-      watcher.on('change', (filePath) => {
-        handleIdlChange(filePath, root)
+      watcher.on('change', filePath => {
+        handleSchemaChange(filePath, root)
+      })
+      watcher.on('add', filePath => {
+        handleSchemaChange(filePath, root)
       })
 
-      watcher.on('add', (filePath) => {
-        handleIdlChange(filePath, root)
-      })
+      logger.info(`Watching ${resolvedWatchDir} for schema changes`)
 
-      logger.info(`Watching ${resolvedWatchDir} for IDL changes`)
-
-      // Clean up watcher when dev server closes
       devServer.httpServer?.on('close', () => {
         watcher?.close()
       })
     },
 
     closeBundle() {
-      // Also close during production builds (safety net)
       watcher?.close()
     },
   }
 
-  function handleIdlChange(filePath: string, root: string) {
-    const idlName = basename(filePath, '.json')
-    const destinations = mapping[idlName]
+  function handleSchemaChange(filePath: string, root: string) {
+    const schemaName = basename(filePath, '.json')
+    const destinations = mapping[schemaName]
 
     if (!destinations || destinations.length === 0) {
-      logger.debug(`No mapping for IDL: ${idlName}`)
+      logger.debug(`No mapping for schema: ${schemaName}`)
       return
     }
 
-    logger.info(`IDL changed: ${idlName}`)
+    logger.info(`Schema changed: ${schemaName}`)
 
     let content: string
     try {
       content = readFileSync(filePath, 'utf-8')
-      // Validate it's actually JSON
       JSON.parse(content)
     } catch (e) {
-      logger.warn(`Failed to read IDL ${filePath}: ${e}`)
+      logger.warn(`Failed to read schema ${filePath}: ${e}`)
       return
     }
 
@@ -100,29 +97,29 @@ export function polyqIdlSync(options?: IdlSyncConfig): Plugin {
         writeFileSync(resolvedDest, content, 'utf-8')
         logger.success(`Synced → ${dest}`)
 
-        // Trigger HMR by invalidating the module
         if (server) {
-          const module = server.moduleGraph.getModuleById(resolvedDest)
-            ?? server.moduleGraph.getModulesByFile(resolvedDest)?.values().next().value
+          const module =
+            server.moduleGraph.getModuleById(resolvedDest) ??
+            server.moduleGraph.getModulesByFile(resolvedDest)?.values().next().value
           if (module) {
             server.moduleGraph.invalidateModule(module)
             try {
-              // Vite 5/6 compatible — try granular update, fall back to full reload
               server.ws.send({
                 type: 'update',
-                updates: [{
-                  type: 'js-update',
-                  path: module.url,
-                  acceptedPath: module.url,
-                  timestamp: Date.now(),
-                }],
+                updates: [
+                  {
+                    type: 'js-update',
+                    path: module.url,
+                    acceptedPath: module.url,
+                    timestamp: Date.now(),
+                  },
+                ],
               })
             } catch {
               server.ws.send({ type: 'full-reload' })
             }
             logger.success(`HMR update sent for ${dest}`)
           } else {
-            // If the module isn't in the graph yet, do a full reload
             server.ws.send({ type: 'full-reload' })
             logger.info('Triggered full reload (module not in graph)')
           }

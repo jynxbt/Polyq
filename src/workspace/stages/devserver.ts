@@ -1,6 +1,6 @@
 import consola from 'consola'
+import { gracefulKill, run } from '../process'
 import type { Stage } from '../stage'
-import { run, killByPattern, isProcessRunning } from '../process'
 
 const logger = consola.withTag('polyq:devserver')
 
@@ -8,10 +8,13 @@ export interface DevServerStageOptions {
   /** Command to run (e.g., 'bun run dev') */
   command: string
   /** Working directory (relative to root) */
-  cwd?: string
+  cwd?: string | undefined
   /** Project root */
   root: string
 }
+
+// DevServer runs in the foreground; `healthChecks` isn't consumed here yet.
+// Declared on the orchestrator payload for symmetry but not threaded down.
 
 /**
  * Start the dev server (e.g., Nuxt, Vite) in the foreground.
@@ -20,10 +23,9 @@ export interface DevServerStageOptions {
 export function createDevServerStage(options: DevServerStageOptions): Stage {
   const parts = options.command.split(' ')
   const cmd = parts[0]
+  if (!cmd) throw new Error(`Invalid dev server command: "${options.command}"`)
   const args = parts.slice(1)
-  const cwd = options.cwd
-    ? `${options.root}/${options.cwd}`
-    : options.root
+  const cwd = options.cwd ? `${options.root}/${options.cwd}` : options.root
 
   return {
     name: 'Dev Server',
@@ -49,9 +51,11 @@ export function createDevServerStage(options: DevServerStageOptions): Stage {
     },
 
     async stop() {
-      // Kill nuxt/vite dev servers
-      killByPattern('nuxt dev')
-      killByPattern('vite')
+      // Dev servers own caches + child processes. SIGTERM first so Nuxt/Vite
+      // can flush their .cache/.next directories, then escalate to SIGKILL if
+      // they hang past the default 3-second window.
+      await gracefulKill('nuxt dev')
+      await gracefulKill('vite')
     },
   }
 }

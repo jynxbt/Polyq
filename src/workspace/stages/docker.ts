@@ -1,17 +1,20 @@
 import consola from 'consola'
+import type { HealthCheckTuning } from '../../config/types'
+import { portCheck, waitUntilReady } from '../health'
+import { run, runSync } from '../process'
 import type { Stage } from '../stage'
-import { runSync, run } from '../process'
-import { waitUntilReady, portCheck } from '../health'
 
 const logger = consola.withTag('polyq:docker')
 
 export interface DockerStageOptions {
   /** Path to docker-compose.yml (relative to root) */
-  compose?: string
+  compose?: string | undefined
   /** Specific services to start (default: all) */
-  services?: string[]
+  services?: string[] | undefined
   /** Port to health-check for readiness (default: 5432) */
-  healthCheckPort?: number
+  healthCheckPort?: number | undefined
+  /** Health check tuning forwarded from workspace config */
+  healthChecks?: HealthCheckTuning | undefined
   /** Project root */
   root: string
 }
@@ -46,14 +49,12 @@ export function createDockerStage(options: DockerStageOptions): Stage {
         throw new Error('Docker daemon is not running. Start Docker Desktop or dockerd.')
       }
 
-      const serviceArgs = options.services?.length
-        ? options.services.join(' ')
-        : ''
+      const serviceArgs = options.services?.length ? options.services.join(' ') : ''
 
       logger.info('Starting Docker services...')
       const result = await run(
         'docker',
-        ['compose', '-f', composeFile, 'up', '-d', ...( serviceArgs ? serviceArgs.split(' ') : [])],
+        ['compose', '-f', composeFile, 'up', '-d', ...(serviceArgs ? serviceArgs.split(' ') : [])],
         { cwd: options.root, label: 'docker compose up' },
       )
 
@@ -63,19 +64,19 @@ export function createDockerStage(options: DockerStageOptions): Stage {
 
       // Wait for database to accept connections
       const dbPort = options.healthCheckPort ?? 5432
-      await waitUntilReady(
-        () => portCheck('127.0.0.1', dbPort),
-        { label: 'Database', interval: 500, timeout: 15_000 },
-      )
+      await waitUntilReady(() => portCheck('127.0.0.1', dbPort), {
+        label: 'Database',
+        interval: options.healthChecks?.pollInterval ?? 500,
+        timeout: options.healthChecks?.maxWait ?? 15_000,
+      })
     },
 
     async stop() {
       logger.info('Stopping Docker services...')
-      await run(
-        'docker',
-        ['compose', '-f', composeFile, 'down'],
-        { cwd: options.root, label: 'docker compose down' },
-      )
+      await run('docker', ['compose', '-f', composeFile, 'down'], {
+        cwd: options.root,
+        label: 'docker compose down',
+      })
     },
   }
 }

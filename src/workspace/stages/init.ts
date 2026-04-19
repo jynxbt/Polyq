@@ -1,6 +1,6 @@
 import consola from 'consola'
-import type { Stage } from '../stage'
 import { run } from '../process'
+import type { Stage } from '../stage'
 
 const logger = consola.withTag('polyq:init')
 
@@ -8,7 +8,7 @@ export interface InitStageOptions {
   /** Init script path (relative to root) */
   script: string
   /** Script runner (default: 'bun') */
-  runner?: string
+  runner?: string | undefined
   /** Project root */
   root: string
 }

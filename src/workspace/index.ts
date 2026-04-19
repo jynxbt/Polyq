@@ -1,5 +1,5 @@
-export { buildStages, runStages, stopStages, checkStages } from './orchestrator'
+export { httpHealthCheck, portCheck, waitUntilReady } from './health'
 export type { OrchestratorOptions } from './orchestrator'
+export { buildStages, checkStages, runStages, stopStages } from './orchestrator'
+export { isProcessRunning, killByPattern, killPort, run, runSync, spawnDetached } from './process'
 export type { Stage } from './stage'
-export { waitUntilReady, httpHealthCheck, portCheck } from './health'
-export { spawnDetached, run, runSync, killByPattern, isProcessRunning, killPort } from './process'

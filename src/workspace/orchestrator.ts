@@ -1,12 +1,13 @@
 import consola from 'consola'
-import type { Stage } from './stage'
 import type { ResolvedPolyqConfig } from '../config/types'
-import { createDockerStage } from './stages/docker'
-import { createValidatorStage, createValidatorResetStage } from './stages/validator'
-import { createProgramsBuildStage, createProgramsDeployStage } from './stages/programs'
-import { createInitStage } from './stages/init'
-import { createDatabaseStage, createDatabaseResetStage } from './stages/database'
+import { errorMessage } from '../utils/error'
+import type { Stage } from './stage'
+import { createDatabaseResetStage, createDatabaseStage } from './stages/database'
 import { createDevServerStage } from './stages/devserver'
+import { createDockerStage } from './stages/docker'
+import { createInitStage } from './stages/init'
+import { createProgramsBuildStage, createProgramsDeployStage } from './stages/programs'
+import { createValidatorResetStage, createValidatorStage } from './stages/validator'
 
 const logger = consola.withTag('polyq')
 
@@ -28,100 +29,110 @@ export function buildStages(
 ): Stage[] {
   const ws = config.workspace
   if (!ws) {
-    throw new Error('No workspace config. Run `polyq init` or add a workspace section to polyq.config.ts')
+    throw new Error(
+      'No workspace config. Run `polyq init` or add a workspace section to polyq.config.ts',
+    )
   }
 
-  const chain = config.resolvedChain ?? config._chain ?? 'svm'
+  const chain = config.resolvedChain ?? 'svm'
   const stages: Stage[] = []
+  const healthChecks = ws.healthChecks
 
   // Stage 1: Docker
   if (ws.docker?.enabled !== false) {
-    stages.push(createDockerStage({
-      compose: ws.docker?.compose,
-      services: ws.docker?.services,
-      healthCheckPort: ws.docker?.healthCheckPort,
-      root: config.root,
-    }))
+    stages.push(
+      createDockerStage({
+        compose: ws.docker?.compose,
+        services: ws.docker?.services,
+        healthCheckPort: ws.docker?.healthCheckPort,
+        healthChecks,
+        root: config.root,
+      }),
+    )
   }
 
   // Stage 2: Validator / local node
+  const validatorOpts = {
+    rpcUrl: ws.validator?.rpcUrl,
+    tool: ws.validator?.tool,
+    flags: ws.validator?.flags,
+    logFile: ws.validator?.logFile,
+    command: ws.validator?.command,
+    processName: ws.validator?.processName,
+    ports: ws.validator?.ports,
+    healthChecks,
+    root: config.root,
+    chain,
+  }
   if (options.reset) {
-    stages.push(createValidatorResetStage({
-      rpcUrl: ws.validator?.rpcUrl,
-      tool: ws.validator?.tool,
-      flags: ws.validator?.flags,
-      logFile: ws.validator?.logFile,
-      root: config.root,
-      chain,
-    }))
+    stages.push(createValidatorResetStage(validatorOpts))
   } else {
-    stages.push(createValidatorStage({
-      rpcUrl: ws.validator?.rpcUrl,
-      tool: ws.validator?.tool,
-      flags: ws.validator?.flags,
-      logFile: ws.validator?.logFile,
-      root: config.root,
-      chain,
-    }))
+    stages.push(createValidatorStage(validatorOpts))
   }
 
   // Stage 3 & 4: Program/contract build + deploy (skip in --quick mode)
   if (!options.quick && config.programs) {
-    stages.push(createProgramsBuildStage({
-      programs: config.programs,
-      features: ws.buildFeatures,
-      rpcUrl: ws.validator?.rpcUrl,
-      parallel: true,
-      root: config.root,
-      chain,
-    }))
+    stages.push(
+      createProgramsBuildStage({
+        programs: config.programs,
+        features: ws.buildFeatures,
+        rpcUrl: ws.validator?.rpcUrl,
+        parallel: true,
+        healthChecks,
+        root: config.root,
+        chain,
+      }),
+    )
 
-    stages.push(createProgramsDeployStage({
-      programs: config.programs,
-      rpcUrl: ws.validator?.rpcUrl,
-      root: config.root,
-      chain,
-    }))
+    stages.push(
+      createProgramsDeployStage({
+        programs: config.programs,
+        rpcUrl: ws.validator?.rpcUrl,
+        healthChecks,
+        root: config.root,
+        chain,
+      }),
+    )
   }
 
   // Stage 5: Initialization (skip in --quick mode)
   if (!options.quick && ws.init) {
-    stages.push(createInitStage({
-      script: ws.init.script,
-      runner: ws.init.runner,
-      root: config.root,
-    }))
+    stages.push(
+      createInitStage({
+        script: ws.init.script,
+        runner: ws.init.runner,
+        root: config.root,
+      }),
+    )
   }
 
   // Stage 6: Database
   if (ws.database) {
     const dbExtensions = ws.database.extensions ?? []
+    const dbOpts = {
+      url: ws.database.url!,
+      migrationsDir: ws.database.migrationsDir,
+      extensions: dbExtensions,
+      seed: ws.database.seed,
+      healthChecks,
+      root: config.root,
+    }
     if (options.reset) {
-      stages.push(createDatabaseResetStage({
-        url: ws.database.url!,
-        migrationsDir: ws.database.migrationsDir,
-        extensions: dbExtensions,
-        seed: ws.database.seed,
-        root: config.root,
-      }))
+      stages.push(createDatabaseResetStage(dbOpts))
     } else {
-      stages.push(createDatabaseStage({
-        url: ws.database.url!,
-        migrationsDir: ws.database.migrationsDir,
-        extensions: dbExtensions,
-        seed: ws.database.seed,
-        root: config.root,
-      }))
+      stages.push(createDatabaseStage(dbOpts))
     }
   }
 
   // Stage 7: Dev server (always last)
   if (ws.devServer) {
-    stages.push(createDevServerStage({
-      command: ws.devServer.command,
-      cwd: ws.devServer.cwd,
-      root: config.root,
-    }))
+    stages.push(
+      createDevServerStage({
+        command: ws.devServer.command,
+        cwd: ws.devServer.cwd,
+        root: config.root,
+      }),
+    )
   }
 
   // Filter by --only if specified
@@ -142,7 +153,7 @@ export async function runStages(stages: Stage[]): Promise<void> {
   const startTime = Date.now()
 
   for (let i = 0; i < stages.length; i++) {
-    const stage = stages[i]
+    const stage = stages[i]!
     const step = `[${i + 1}/${total}]`
 
     logger.info(`${step} ${stage.name}`)
@@ -155,8 +166,8 @@ export async function runStages(stages: Stage[]): Promise<void> {
       }
 
       await stage.start()
-    } catch (err: any) {
-      logger.error(`${step} ${stage.name} failed: ${err.message}`)
+    } catch (err: unknown) {
+      logger.error(`${step} ${stage.name} failed: ${errorMessage(err)}`)
       throw err
     }
   }
@@ -172,8 +183,8 @@ export async function stopStages(stages: Stage[]): Promise<void> {
   for (const stage of [...stages].reverse()) {
     try {
       await stage.stop()
-    } catch (err: any) {
-      logger.warn(`Failed to stop ${stage.name}: ${err.message}`)
+    } catch (err: unknown) {
+      logger.warn(`Failed to stop ${stage.name}: ${errorMessage(err)}`)
     }
   }
 
@@ -183,8 +194,8 @@ export async function stopStages(stages: Stage[]): Promise<void> {
 /**
  * Check the status of all stages.
  */
-export async function checkStages(stages: Stage[]): Promise<{ name: string, running: boolean }[]> {
-  const results: { name: string, running: boolean }[] = []
+export async function checkStages(stages: Stage[]): Promise<{ name: string; running: boolean }[]> {
+  const results: { name: string; running: boolean }[] = []
 
   for (const stage of stages) {
     try {

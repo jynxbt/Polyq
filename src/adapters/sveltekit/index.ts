@@ -1,11 +1,11 @@
 import type { Plugin } from 'vite'
-import type { PolyqConfig, PolyfillConfig, IdlSyncConfig } from '../../config/types'
+import type { PolyfillConfig, SchemaSyncConfig } from '../../config/types'
 import { polyqPolyfills } from '../vite/polyfills'
-import { polyqIdlSync } from '../vite/idl-sync'
+import { polyqSchemaSync } from '../vite/schema-sync'
 
 interface PolyqSvelteKitOptions {
   polyfills?: PolyfillConfig
-  idlSync?: IdlSyncConfig
+  schemaSync?: SchemaSyncConfig
 }
 
 /**
@@ -29,7 +29,7 @@ interface PolyqSvelteKitOptions {
  * ```ts
  * plugins: [sveltekit(), ...polyqSvelteKit({
  *   polyfills: { buffer: true },
- *   idlSync: {
+ *   schemaSync: {
  *     mapping: { my_program: ['src/lib/idl.json'] },
  *   },
  * })]
@@ -38,8 +38,8 @@ interface PolyqSvelteKitOptions {
 export function polyqSvelteKit(options?: PolyqSvelteKitOptions): Plugin[] {
   const plugins: Plugin[] = [polyqPolyfills(options?.polyfills)]
 
-  if (options?.idlSync) {
-    plugins.push(polyqIdlSync(options.idlSync))
+  if (options?.schemaSync) {
+    plugins.push(polyqSchemaSync(options.schemaSync))
   }
 
   return plugins

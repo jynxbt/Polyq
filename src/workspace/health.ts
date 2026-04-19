@@ -34,7 +34,9 @@ export async function waitUntilReady(
     try {
       if (await check()) {
         if (!opts.quiet) {
-          consola.success(`${opts.label} ready (${attempts} attempt${attempts > 1 ? 's' : ''}, ${Date.now() - start}ms)`)
+          consola.success(
+            `${opts.label} ready (${attempts} attempt${attempts > 1 ? 's' : ''}, ${Date.now() - start}ms)`,
+          )
         }
         return
       }
@@ -69,7 +71,7 @@ export async function httpHealthCheck(url: string, timeoutMs = 2000): Promise<bo
  */
 export async function portCheck(host: string, port: number, timeoutMs = 1000): Promise<boolean> {
   const { createConnection } = await import('node:net')
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const socket = createConnection({ host, port, timeout: timeoutMs })
     socket.on('connect', () => {
       socket.destroy()

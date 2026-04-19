@@ -1,6 +1,11 @@
 import type { Plugin } from 'vite'
 import type { PolyfillConfig } from '../../config/types'
-import { detectChainPackages, detectSolanaPackages, resolvePolyfillNeeds, OPTIMIZE_DEPS } from '../../core/detect'
+import {
+  detectChainPackages,
+  detectSolanaPackages,
+  OPTIMIZE_DEPS,
+  resolvePolyfillNeeds,
+} from '../../core/detect'
 
 /**
  * Vite plugin that auto-configures polyfills required for blockchain libraries.
@@ -36,15 +41,12 @@ export function polyqPolyfills(options?: PolyfillConfig): Plugin {
       if (isSSR) return
 
       // Polyfill needs are based on SVM packages (EVM libs don't need Buffer/global)
-      const needs = resolvePolyfillNeeds(
-        mode === 'auto' ? detectSolanaPackages(root) : [],
-        {
-          global: options?.global,
-          buffer: options?.buffer,
-          crypto: options?.crypto,
-          process: options?.process,
-        },
-      )
+      const needs = resolvePolyfillNeeds(mode === 'auto' ? detectSolanaPackages(root) : [], {
+        global: options?.global,
+        buffer: options?.buffer,
+        crypto: options?.crypto,
+        process: options?.process,
+      })
 
       // When manual mode, default everything to true
       if (mode === 'manual') {
@@ -57,11 +59,11 @@ export function polyqPolyfills(options?: PolyfillConfig): Plugin {
       const include: string[] = []
 
       if (needs.global) {
-        define['global'] = 'globalThis'
+        define.global = 'globalThis'
       }
 
       if (needs.buffer) {
-        alias['buffer'] = 'buffer/'
+        alias.buffer = 'buffer/'
         include.push('buffer')
       }
 

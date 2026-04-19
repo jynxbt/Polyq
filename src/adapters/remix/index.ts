@@ -1,11 +1,11 @@
 import type { Plugin } from 'vite'
-import type { PolyfillConfig, IdlSyncConfig } from '../../config/types'
+import type { PolyfillConfig, SchemaSyncConfig } from '../../config/types'
 import { polyqPolyfills } from '../vite/polyfills'
-import { polyqIdlSync } from '../vite/idl-sync'
+import { polyqSchemaSync } from '../vite/schema-sync'
 
 interface PolyqRemixOptions {
   polyfills?: PolyfillConfig
-  idlSync?: IdlSyncConfig
+  schemaSync?: SchemaSyncConfig
 }
 
 /**
@@ -27,8 +27,8 @@ interface PolyqRemixOptions {
 export function polyqRemix(options?: PolyqRemixOptions): Plugin[] {
   const plugins: Plugin[] = [polyqPolyfills(options?.polyfills)]
 
-  if (options?.idlSync) {
-    plugins.push(polyqIdlSync(options.idlSync))
+  if (options?.schemaSync) {
+    plugins.push(polyqSchemaSync(options.schemaSync))
   }
 
   return plugins
