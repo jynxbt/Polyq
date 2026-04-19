@@ -1,67 +1,67 @@
-import { rmSync, existsSync } from 'node:fs'
-import { resolve } from 'pathe'
+import { existsSync, rmSync } from 'node:fs'
 import consola from 'consola'
+import { resolve } from 'pathe'
+import { parseRpcPort } from '../../utils/error'
+import { httpHealthCheck, portCheck, waitUntilReady } from '../../workspace/health'
+import { isProcessRunning, killByPattern, killPort, spawnDetached } from '../../workspace/process'
 import type { Stage } from '../../workspace/stage'
-import { spawnDetached, killByPattern, isProcessRunning, killPort } from '../../workspace/process'
-import { waitUntilReady, httpHealthCheck } from '../../workspace/health'
+import type { ValidatorStageOptions } from '../types'
 
 const logger = consola.withTag('polyq:validator')
 
-export interface ValidatorStageOptions {
-  /** RPC URL (default: http://127.0.0.1:8899) */
-  rpcUrl?: string
-  /** Extra flags for solana-test-validator */
-  flags?: string[]
-  /** Log file path */
-  logFile?: string
-  /** Project root */
-  root: string
-}
+const DEFAULT_RPC_PORT = 8899
+const DEFAULT_FAUCET_PORT = 9900
+
+export type { ValidatorStageOptions }
 
 export function createValidatorStage(options: ValidatorStageOptions): Stage {
-  const rpcUrl = options.rpcUrl ?? 'http://127.0.0.1:8899'
+  const rpcUrl = options.rpcUrl ?? `http://127.0.0.1:${DEFAULT_RPC_PORT}`
+  const rpcPort = parseRpcPort(rpcUrl, DEFAULT_RPC_PORT)
   const logFile = options.logFile ?? '/tmp/polyq-validator.log'
   const flags = options.flags ?? ['--quiet']
+  // SVM defaults: RPC port, WS port (rpc+1), faucet port 9900.
+  const ports = options.ports ?? [rpcPort, rpcPort + 1, DEFAULT_FAUCET_PORT]
+  const processName = options.processName ?? 'solana-test-validator'
+
+  const poll = options.healthChecks?.pollInterval ?? 1000
+  const maxWait = options.healthChecks?.maxWait ?? 30_000
+  const requestTimeout = options.healthChecks?.requestTimeout ?? 2000
 
   return {
     name: 'Validator',
 
     async check() {
-      return httpHealthCheck(`${rpcUrl}/health`)
+      return httpHealthCheck(`${rpcUrl}/health`, requestTimeout)
     },
 
     async start() {
-      // If already running, skip
-      if (await httpHealthCheck(`${rpcUrl}/health`)) {
+      if (await httpHealthCheck(`${rpcUrl}/health`, requestTimeout)) {
         logger.info('Validator already running')
         return
       }
 
-      // Kill any stale validator processes
-      if (isProcessRunning('solana-test-validator')) {
+      if (isProcessRunning(processName)) {
         logger.info('Killing stale validator...')
-        killByPattern('solana-test-validator', 'SIGKILL')
+        killByPattern(processName, 'SIGKILL')
 
-        // Wait for process to exit
-        await waitUntilReady(
-          async () => !isProcessRunning('solana-test-validator'),
-          { label: 'Validator shutdown', interval: 500, timeout: 10_000, quiet: true },
-        )
+        await waitUntilReady(async () => !isProcessRunning(processName), {
+          label: 'Validator shutdown',
+          interval: 500,
+          timeout: 10_000,
+          quiet: true,
+        })
       }
 
-      // Kill any processes on validator ports
-      for (const port of [8899, 8900, 9900]) {
+      for (const port of ports) {
         killPort(port)
       }
 
-      // Wait for ports to be free
       await waitUntilReady(
         async () => {
-          const { portCheck } = await import('../../workspace/health')
-          const busy = await portCheck('127.0.0.1', 8899)
+          const busy = await portCheck('127.0.0.1', rpcPort)
           return !busy
         },
-        { label: 'Port 8899 free', interval: 500, timeout: 5_000, quiet: true },
+        { label: `Port ${rpcPort} free`, interval: 500, timeout: 5_000, quiet: true },
       )
 
       logger.info('Starting solana-test-validator...')
@@ -70,29 +70,30 @@ export function createValidatorStage(options: ValidatorStageOptions): Stage {
         cwd: options.root,
       })
 
-      // Wait for RPC to be ready
-      await waitUntilReady(
-        () => httpHealthCheck(`${rpcUrl}/health`),
-        { label: 'Validator RPC', interval: 1000, timeout: 30_000 },
-      )
+      await waitUntilReady(() => httpHealthCheck(`${rpcUrl}/health`, requestTimeout), {
+        label: 'Validator RPC',
+        interval: poll,
+        timeout: maxWait,
+      })
     },
 
     async stop() {
-      if (!isProcessRunning('solana-test-validator')) {
+      if (!isProcessRunning(processName)) {
         logger.info('Validator not running')
         return
       }
 
       logger.info('Stopping validator...')
-      killByPattern('solana-test-validator', 'SIGKILL')
+      killByPattern(processName, 'SIGKILL')
 
-      await waitUntilReady(
-        async () => !isProcessRunning('solana-test-validator'),
-        { label: 'Validator shutdown', interval: 500, timeout: 10_000, quiet: true },
-      )
+      await waitUntilReady(async () => !isProcessRunning(processName), {
+        label: 'Validator shutdown',
+        interval: 500,
+        timeout: 10_000,
+        quiet: true,
+      })
 
-      // Clean up ports
-      for (const port of [8899, 8900, 9900]) {
+      for (const port of ports) {
         killPort(port)
       }
     },
@@ -111,16 +112,13 @@ export function createValidatorResetStage(options: ValidatorStageOptions): Stage
     check: baseStage.check,
 
     async start() {
-      // Force stop first
       await baseStage.stop()
 
-      // Remove stale ledger
       if (existsSync(ledgerPath)) {
         logger.info('Removing stale ledger...')
         rmSync(ledgerPath, { recursive: true, force: true })
       }
 
-      // Start fresh
       await baseStage.start()
     },
 

@@ -1,32 +1,17 @@
 import consola from 'consola'
-import type { Stage } from '../../workspace/stage'
-import type { ProgramConfig } from '../../config/types'
 import { run } from '../../workspace/process'
+import type { Stage } from '../../workspace/stage'
+import type { ProgramsStageOptions } from '../types'
 
 const logger = consola.withTag('polyq:programs')
 
-export interface ProgramsStageOptions {
-  /** Program definitions */
-  programs: Record<string, ProgramConfig>
-  /** Build features (e.g., ['local']) */
-  features?: string[]
-  /** RPC URL for deployment */
-  rpcUrl?: string
-  /** Build programs in parallel */
-  parallel?: boolean
-  /** Project root */
-  root: string
-}
-
 export function createProgramsBuildStage(options: ProgramsStageOptions): Stage {
   const features = options.features ?? []
-  const rpcUrl = options.rpcUrl ?? 'http://127.0.0.1:8899'
+  const _rpcUrl = options.rpcUrl ?? 'http://127.0.0.1:8899'
 
   // Split programs by type
-  const anchorPrograms = Object.entries(options.programs)
-    .filter(([_, p]) => p.type === 'anchor')
-  const nativePrograms = Object.entries(options.programs)
-    .filter(([_, p]) => p.type === 'native')
+  const anchorPrograms = Object.entries(options.programs).filter(([_, p]) => p.type === 'anchor')
+  const nativePrograms = Object.entries(options.programs).filter(([_, p]) => p.type === 'native')
 
   return {
     name: 'Programs (build)',
@@ -69,9 +54,7 @@ export function createProgramsBuildStage(options: ProgramsStageOptions): Stage {
       // Native programs build individually via cargo build-sbf
       for (const [name, program] of nativePrograms) {
         const nativeBuild = async () => {
-          const manifestPath = program.deploy?.binary
-            ? undefined
-            : `${program.path}/Cargo.toml`
+          const manifestPath = program.deploy?.binary ? undefined : `${program.path}/Cargo.toml`
 
           const args = ['build-sbf']
           if (manifestPath) {
@@ -114,10 +97,8 @@ export function createProgramsBuildStage(options: ProgramsStageOptions): Stage {
 export function createProgramsDeployStage(options: ProgramsStageOptions): Stage {
   const rpcUrl = options.rpcUrl ?? 'http://127.0.0.1:8899'
 
-  const anchorPrograms = Object.entries(options.programs)
-    .filter(([_, p]) => p.type === 'anchor')
-  const nativePrograms = Object.entries(options.programs)
-    .filter(([_, p]) => p.type === 'native')
+  const anchorPrograms = Object.entries(options.programs).filter(([_, p]) => p.type === 'anchor')
+  const nativePrograms = Object.entries(options.programs).filter(([_, p]) => p.type === 'native')
 
   return {
     name: 'Programs (deploy)',
@@ -149,15 +130,22 @@ export function createProgramsDeployStage(options: ProgramsStageOptions): Stage 
         }
 
         logger.info(`Deploying native program: ${name}...`)
-        const result = await run('solana', [
-          'program', 'deploy',
-          '--url', rpcUrl,
-          '--program-id', program.deploy.keypair,
-          program.deploy.binary,
-        ], {
-          cwd: options.root,
-          label: `solana program deploy (${name})`,
-        })
+        const result = await run(
+          'solana',
+          [
+            'program',
+            'deploy',
+            '--url',
+            rpcUrl,
+            '--program-id',
+            program.deploy.keypair,
+            program.deploy.binary,
+          ],
+          {
+            cwd: options.root,
+            label: `solana program deploy (${name})`,
+          },
+        )
         if (result.exitCode !== 0) {
           throw new Error(`solana program deploy failed for ${name} (exit ${result.exitCode})`)
         }

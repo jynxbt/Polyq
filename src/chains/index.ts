@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs'
-import { resolve, dirname } from 'pathe'
 import consola from 'consola'
-import type { ChainFamily, ChainProvider } from './types'
-import { svmProvider } from './svm'
+import { dirname, resolve } from 'pathe'
 import { evmProvider } from './evm'
+import { svmProvider } from './svm'
+import type { ChainFamily, ChainProvider } from './types'
 
 const providers: Record<ChainFamily, ChainProvider> = {
   svm: svmProvider,
@@ -45,11 +45,11 @@ export function detectChain(root: string): ChainFamily {
   if (definiteMatches.length > 1) {
     consola.warn(
       `Multiple chain configs detected (${definiteMatches.join(', ')}). ` +
-      `Using '${definiteMatches[0]}'. Set \`chain\` explicitly in polyq.config.ts to silence this warning.`,
+        `Using '${definiteMatches[0]}'. Set \`chain\` explicitly in polyq.config.ts to silence this warning.`,
     )
   }
 
-  if (definiteMatches.length > 0) return definiteMatches[0]
+  if (definiteMatches.length > 0) return definiteMatches[0]!
 
   // Check package.json dependencies (likely detection)
   for (const provider of getAllProviders()) {
@@ -74,5 +74,11 @@ export function findProjectRoot(cwd: string): string {
   return cwd
 }
 
-export type { ChainFamily, ChainProvider, ChainDetectionResult } from './types'
-export type { CodegenOutput, ValidatorStageOptions, ProgramsStageOptions } from './types'
+export type {
+  ChainDetectionResult,
+  ChainFamily,
+  ChainProvider,
+  CodegenOutput,
+  ProgramsStageOptions,
+  ValidatorStageOptions,
+} from './types'

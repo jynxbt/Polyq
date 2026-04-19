@@ -1,16 +1,13 @@
 import consola from 'consola'
-import type { Stage } from '../../workspace/stage'
-import type { ProgramConfig } from '../../config/types'
 import { run } from '../../workspace/process'
+import type { Stage } from '../../workspace/stage'
 import type { ProgramsStageOptions } from '../types'
 
 const logger = consola.withTag('polyq:evm-build')
 
 export function createEvmBuildStage(options: ProgramsStageOptions): Stage {
-  const foundryPrograms = Object.entries(options.programs)
-    .filter(([_, p]) => p.type === 'foundry')
-  const hardhatPrograms = Object.entries(options.programs)
-    .filter(([_, p]) => p.type === 'hardhat')
+  const foundryPrograms = Object.entries(options.programs).filter(([_, p]) => p.type === 'foundry')
+  const hardhatPrograms = Object.entries(options.programs).filter(([_, p]) => p.type === 'hardhat')
 
   return {
     name: 'Contracts (build)',
@@ -50,7 +47,7 @@ export function createEvmBuildStage(options: ProgramsStageOptions): Stage {
 }
 
 export function createEvmDeployStage(options: ProgramsStageOptions): Stage {
-  const rpcUrl = options.rpcUrl ?? 'http://127.0.0.1:8545'
+  const _rpcUrl = options.rpcUrl ?? 'http://127.0.0.1:8545'
 
   return {
     name: 'Contracts (deploy)',

@@ -1,7 +1,11 @@
 import { getAllProviders } from '../chains'
 
 // Re-export SVM detection for backwards compat
-export { SOLANA_PACKAGES, SVM_OPTIMIZE_DEPS as OPTIMIZE_DEPS, detectSolanaPackages } from '../chains/svm/detect'
+export {
+  detectSolanaPackages,
+  SOLANA_PACKAGES,
+  SVM_OPTIMIZE_DEPS as OPTIMIZE_DEPS,
+} from '../chains/svm/detect'
 
 /** Node built-ins that blockchain libs may need in browsers */
 export const NODE_POLYFILLS = {
@@ -34,7 +38,7 @@ export interface PolyfillNeeds {
 
 export function resolvePolyfillNeeds(
   detected: string[],
-  overrides?: Partial<PolyfillNeeds>,
+  overrides?: { [K in keyof PolyfillNeeds]?: PolyfillNeeds[K] | undefined },
 ): PolyfillNeeds {
   const hasSolana = detected.length > 0
 

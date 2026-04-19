@@ -1,13 +1,11 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'pathe'
 import type { ProgramConfig } from '../../config/types'
 
 /**
  * Parse Anchor.toml to extract program definitions.
  */
-export function detectProgramsFromAnchor(
-  root: string,
-): Record<string, ProgramConfig> | undefined {
+export function detectProgramsFromAnchor(root: string): Record<string, ProgramConfig> | undefined {
   const anchorPath = resolve(root, 'Anchor.toml')
   if (!existsSync(anchorPath)) return undefined
 
@@ -16,26 +14,30 @@ export function detectProgramsFromAnchor(
 
   const programIdsByNetwork: Record<string, Record<string, string>> = {}
   const programSectionRe = /\[programs\.(\w+)\]\s*\n([\s\S]*?)(?=\n\[|\n*$)/g
-  let match
+  let match: RegExpExecArray | null
   while ((match = programSectionRe.exec(content)) !== null) {
     const network = match[1]
     const body = match[2]
+    if (!network || !body) continue
     const kvRe = /^(\w+)\s*=\s*"([^"]+)"/gm
-    let kv
+    let kv: RegExpExecArray | null
     while ((kv = kvRe.exec(body)) !== null) {
-      if (!programIdsByNetwork[kv[1]]) programIdsByNetwork[kv[1]] = {}
-      programIdsByNetwork[kv[1]][network] = kv[2]
+      const progName = kv[1]
+      const progId = kv[2]
+      if (!progName || !progId) continue
+      if (!programIdsByNetwork[progName]) programIdsByNetwork[progName] = {}
+      programIdsByNetwork[progName]![network] = progId
     }
   }
 
   const workspaceRe = /\[workspace\]\s*\n[\s\S]*?members\s*=\s*\[([\s\S]*?)\]/
   const workspaceMatch = workspaceRe.exec(content)
   const memberPaths: string[] = []
-  if (workspaceMatch) {
+  if (workspaceMatch?.[1]) {
     const memberRe = /"([^"]+)"/g
-    let m
+    let m: RegExpExecArray | null
     while ((m = memberRe.exec(workspaceMatch[1])) !== null) {
-      memberPaths.push(m[1])
+      if (m[1]) memberPaths.push(m[1])
     }
   }
 
@@ -77,7 +79,14 @@ export function findSvmSchemaFiles(root: string): string[] {
   }
 
   // 3. Scan common IDL locations used by monorepos
-  const commonDirs = ['idl', 'idls', 'app/idl', 'src/idl', 'packages/sdk/src', 'packages/ts-sdk/src']
+  const commonDirs = [
+    'idl',
+    'idls',
+    'app/idl',
+    'src/idl',
+    'packages/sdk/src',
+    'packages/ts-sdk/src',
+  ]
 
   // Also scan packages/*/src for monorepo patterns
   const packagesDir = resolve(root, 'packages')
@@ -91,7 +100,9 @@ export function findSvmSchemaFiles(root: string): string[] {
           }
         }
       }
-    } catch { /* not readable */ }
+    } catch {
+      /* not readable */
+    }
   }
   for (const dir of commonDirs) {
     const fullDir = resolve(root, dir)
@@ -105,9 +116,13 @@ export function findSvmSchemaFiles(root: string): string[] {
             if (parsed.metadata?.name && Array.isArray(parsed.instructions)) {
               found.add(resolve(fullDir, f))
             }
-          } catch { /* not a valid IDL */ }
+          } catch {
+            /* not a valid IDL */
+          }
         }
-      } catch { /* dir not readable */ }
+      } catch {
+        /* dir not readable */
+      }
     }
   }
 

@@ -1,13 +1,11 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { resolve, join } from 'pathe'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { resolve } from 'pathe'
 import type { ProgramConfig } from '../../config/types'
 
 /**
  * Detect EVM contracts from Foundry or Hardhat project structure.
  */
-export function detectEvmPrograms(
-  root: string,
-): Record<string, ProgramConfig> | undefined {
+export function detectEvmPrograms(root: string): Record<string, ProgramConfig> | undefined {
   // Try Foundry first
   const foundryToml = resolve(root, 'foundry.toml')
   if (existsSync(foundryToml)) {
@@ -56,9 +54,7 @@ function detectFromFoundry(
   return Object.keys(programs).length > 0 ? programs : undefined
 }
 
-function detectFromHardhat(
-  root: string,
-): Record<string, ProgramConfig> | undefined {
+function detectFromHardhat(root: string): Record<string, ProgramConfig> | undefined {
   const programs: Record<string, ProgramConfig> = {}
 
   // Check for contracts/ directory (Hardhat default)
@@ -85,14 +81,21 @@ function findSolFiles(dir: string): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (entry.isFile() && entry.name.endsWith('.sol')) {
         results.push(entry.name)
-      } else if (entry.isDirectory() && entry.name !== 'test' && entry.name !== 'lib' && entry.name !== 'node_modules') {
+      } else if (
+        entry.isDirectory() &&
+        entry.name !== 'test' &&
+        entry.name !== 'lib' &&
+        entry.name !== 'node_modules'
+      ) {
         // Recurse into subdirectories, skip test/lib
         for (const nested of findSolFiles(resolve(dir, entry.name))) {
           results.push(nested)
         }
       }
     }
-  } catch { /* empty */ }
+  } catch {
+    /* empty */
+  }
   return results
 }
 
@@ -105,13 +108,16 @@ export function findEvmSchemaFiles(root: string): string[] {
     try {
       for (const contractDir of readdirSync(outDir)) {
         const contractPath = resolve(outDir, contractDir)
-        const jsonFiles = readdirSync(contractPath)
-          .filter(f => f.endsWith('.json') && !f.endsWith('.dbg.json'))
+        const jsonFiles = readdirSync(contractPath).filter(
+          f => f.endsWith('.json') && !f.endsWith('.dbg.json'),
+        )
         for (const f of jsonFiles) {
           files.push(resolve(contractPath, f))
         }
       }
-    } catch { /* empty */ }
+    } catch {
+      /* empty */
+    }
   }
 
   // Hardhat: artifacts/contracts/
@@ -120,13 +126,16 @@ export function findEvmSchemaFiles(root: string): string[] {
     try {
       for (const contractDir of readdirSync(artifactsDir)) {
         const contractPath = resolve(artifactsDir, contractDir)
-        const jsonFiles = readdirSync(contractPath)
-          .filter(f => f.endsWith('.json') && !f.endsWith('.dbg.json'))
+        const jsonFiles = readdirSync(contractPath).filter(
+          f => f.endsWith('.json') && !f.endsWith('.dbg.json'),
+        )
         for (const f of jsonFiles) {
           files.push(resolve(contractPath, f))
         }
       }
-    } catch { /* empty */ }
+    } catch {
+      /* empty */
+    }
   }
 
   return files

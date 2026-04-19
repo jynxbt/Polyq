@@ -1,9 +1,36 @@
-import type { ChainProvider } from '../types'
-import { SOLANA_PACKAGES, SVM_OPTIMIZE_DEPS, SVM_ROOT_MARKERS, detectSvmProject, detectSolanaPackages } from './detect'
-import { detectProgramsFromAnchor, findSvmSchemaFiles } from './config'
+import type { CodegenConfig } from '../../config/types'
+import type { ChainProvider, CodegenOutput } from '../types'
 import { generateFromIdl } from './codegen'
-import { createValidatorStage, createValidatorResetStage } from './validator'
+import { generateFromIdlKit } from './codegen-kit'
+import { detectProgramsFromAnchor, findSvmSchemaFiles } from './config'
+import {
+  detectSolanaPackages,
+  detectSvmProject,
+  SVM_OPTIMIZE_DEPS,
+  SVM_ROOT_MARKERS,
+} from './detect'
 import { createProgramsBuildStage, createProgramsDeployStage } from './programs'
+import { createValidatorResetStage, createValidatorStage } from './validator'
+
+/**
+ * Dispatch SVM codegen based on `config.mode`.
+ * - `'kit'` → delegate to Codama to emit `@solana/kit`-flavored clients (async)
+ * - anything else (default `'legacy'`) → hand-rolled Borsh + web3.js v1 output (sync)
+ *
+ * The return type is widened to `CodegenOutput | Promise<CodegenOutput>` to
+ * accommodate Codama's async renderer. The ChainProvider interface already
+ * accepts either shape via the caller's `await`.
+ */
+function generateSvmClient(
+  idlPath: string,
+  outDir: string,
+  config?: Partial<CodegenConfig>,
+): CodegenOutput | Promise<CodegenOutput> {
+  if (config?.mode === 'kit') {
+    return generateFromIdlKit(idlPath, outDir, config)
+  }
+  return generateFromIdl(idlPath, outDir, config)
+}
 
 export const svmProvider: ChainProvider = {
   chain: 'svm',
@@ -15,7 +42,7 @@ export const svmProvider: ChainProvider = {
   detectProject: detectSvmProject,
   detectPackages: detectSolanaPackages,
   detectPrograms: detectProgramsFromAnchor,
-  generateClient: generateFromIdl,
+  generateClient: generateSvmClient,
   findSchemaFiles: findSvmSchemaFiles,
   createValidatorStage,
   createValidatorResetStage,
@@ -23,7 +50,8 @@ export const svmProvider: ChainProvider = {
   createDeployStage: createProgramsDeployStage,
 }
 
+export { type CodegenOutput, generateFromIdl } from './codegen'
+export { generateFromIdlKit } from './codegen-kit'
+export { detectProgramsFromAnchor } from './config'
 // Re-export for backwards compat
 export { detectSolanaPackages, SOLANA_PACKAGES, SVM_OPTIMIZE_DEPS } from './detect'
-export { detectProgramsFromAnchor } from './config'
-export { generateFromIdl, type CodegenOutput } from './codegen'

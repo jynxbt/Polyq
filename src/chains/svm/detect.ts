@@ -13,13 +13,7 @@ export const SOLANA_PACKAGES = [
   'bs58',
 ]
 
-export const SVM_OPTIMIZE_DEPS = [
-  'buffer',
-  '@coral-xyz/anchor',
-  'bn.js',
-  '@solana/web3.js',
-  'bs58',
-]
+export const SVM_OPTIMIZE_DEPS = ['buffer', '@coral-xyz/anchor', 'bn.js', '@solana/web3.js', 'bs58']
 
 export const SVM_ROOT_MARKERS = ['Anchor.toml']
 

@@ -1,2 +1,2 @@
-export { generateFromSchema, generateFromIdl } from './generate'
 export type { CodegenOutput } from '../chains/types'
+export { generateFromSchema } from './generate'

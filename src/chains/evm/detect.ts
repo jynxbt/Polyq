@@ -14,10 +14,7 @@ export const EVM_PACKAGES = [
   '@openzeppelin/contracts',
 ]
 
-export const EVM_OPTIMIZE_DEPS = [
-  'ethers',
-  'viem',
-]
+export const EVM_OPTIMIZE_DEPS = ['ethers', 'viem']
 
 export const EVM_ROOT_MARKERS = [
   'foundry.toml',
