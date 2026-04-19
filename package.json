@@ -3,57 +3,130 @@
   "version": "0.2.1",
   "description": "DX toolkit for Solana and EVM — schema sync, polyfills, codegen, and workspace orchestration",
   "type": "module",
+  "types": "./dist/index.d.mts",
   "bin": {
-    "polyq": "./dist/cli/index.js"
+    "polyq": "./dist/cli/index.mjs"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./vite": "./src/adapters/vite/index.ts",
-    "./webpack": "./src/adapters/webpack/index.ts",
-    "./nuxt": "./src/adapters/nuxt/index.ts",
-    "./next": "./src/adapters/next/index.ts",
-    "./sveltekit": "./src/adapters/sveltekit/index.ts",
-    "./remix": "./src/adapters/remix/index.ts",
-    "./codegen": "./src/codegen/index.ts",
-    "./workspace": "./src/workspace/index.ts",
-    "./chains/svm": "./src/chains/svm/index.ts",
-    "./chains/evm": "./src/chains/evm/index.ts",
-    "./stub.js": "./stub.js"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite/index.d.mts",
+      "import": "./dist/vite/index.mjs"
+    },
+    "./webpack": {
+      "types": "./dist/webpack/index.d.mts",
+      "import": "./dist/webpack/index.mjs"
+    },
+    "./nuxt": {
+      "types": "./dist/nuxt/index.d.mts",
+      "import": "./dist/nuxt/index.mjs"
+    },
+    "./next": {
+      "types": "./dist/next/index.d.mts",
+      "import": "./dist/next/index.mjs"
+    },
+    "./sveltekit": {
+      "types": "./dist/sveltekit/index.d.mts",
+      "import": "./dist/sveltekit/index.mjs"
+    },
+    "./remix": {
+      "types": "./dist/remix/index.d.mts",
+      "import": "./dist/remix/index.mjs"
+    },
+    "./codegen": {
+      "types": "./dist/codegen/index.d.mts",
+      "import": "./dist/codegen/index.mjs"
+    },
+    "./workspace": {
+      "types": "./dist/workspace/index.d.mts",
+      "import": "./dist/workspace/index.mjs"
+    },
+    "./chains/svm": {
+      "types": "./dist/chains/svm/index.d.mts",
+      "import": "./dist/chains/svm/index.mjs"
+    },
+    "./chains/evm": {
+      "types": "./dist/chains/evm/index.d.mts",
+      "import": "./dist/chains/evm/index.mjs"
+    },
+    "./stub.cjs": {
+      "types": "./stub.d.cts",
+      "require": "./stub.cjs",
+      "default": "./stub.cjs"
+    },
+    "./package.json": "./package.json"
   },
+  "sideEffects": false,
   "files": [
     "dist",
-    "src",
-    "stub.js"
+    "stub.cjs",
+    "stub.d.cts"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "lint": "tsc --noEmit",
-    "prepublishOnly": "bun run build"
+    "lint:tests": "tsc --noEmit -p tsconfig.test.json",
+    "lint:biome": "biome check .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "pack-check": "publint && attw --pack . --profile esm-only",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "bun run build && changeset publish",
+    "verify-publish": "node scripts/verify-publish-setup.mjs",
+    "prepublishOnly": "node scripts/verify-publish-setup.mjs && bun run build"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
   },
   "dependencies": {
-    "chokidar": "^4.0.0",
-    "citty": "^0.1.6",
+    "chokidar": "^5.0.0",
+    "citty": "^0.2.2",
     "consola": "^3.4.0",
     "defu": "^6.1.4",
     "jiti": "^2.4.0",
-    "pathe": "^2.0.0"
+    "pathe": "^2.0.0",
+    "valibot": "^1.3.1"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@biomejs/biome": "^2.4.12",
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.31.0",
+    "@codama/nodes-from-anchor": "^1.0.0",
+    "@codama/renderers-js": "^1.0.0",
     "@nuxt/kit": "^4.4.2",
-    "@types/node": "^22.0.0",
-    "tsup": "^8.4.0",
-    "typescript": "^5.7.0",
-    "vite": "^6.0.0",
-    "vitest": "^3.0.0"
+    "@types/node": "^25.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "codama": "^1.0.0",
+    "execa": "^9.6.1",
+    "publint": "^0.3.18",
+    "tsdown": "0.21.9",
+    "typescript": "^6.0.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.0"
   },
   "peerDependencies": {
-    "vite": "^5.0.0 || ^6.0.0",
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0",
     "webpack": "^5.0.0",
-    "next": ">=13.0.0",
-    "@nuxt/kit": ">=3.0.0",
-    "@coral-xyz/borsh": ">=0.29.0"
+    "next": "^15.0.0 || ^16.0.0",
+    "@nuxt/kit": "^3.0.0 || ^4.0.0",
+    "@coral-xyz/borsh": "^0.30.0",
+    "viem": "^2.0.0",
+    "@solana/kit": "^6.0.0",
+    "codama": "^1.0.0",
+    "@codama/nodes-from-anchor": "^1.0.0",
+    "@codama/renderers-js": "^1.0.0"
   },
   "peerDependenciesMeta": {
     "vite": {
@@ -70,13 +143,28 @@
     },
     "@nuxt/kit": {
       "optional": true
+    },
+    "viem": {
+      "optional": true
+    },
+    "@solana/kit": {
+      "optional": true
+    },
+    "codama": {
+      "optional": true
+    },
+    "@codama/nodes-from-anchor": {
+      "optional": true
+    },
+    "@codama/renderers-js": {
+      "optional": true
     }
   },
   "license": "MIT",
   "homepage": "https://polyq.jxbt.xyz",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jynxbt/PolyQ"
+    "url": "git+https://github.com/jynxbt/PolyQ.git"
   },
   "keywords": [
     "solana",

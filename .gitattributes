@@ -1,0 +1,17 @@
+* text=auto eol=lf
+
+# Keep native line endings for shell scripts and Windows-specific files.
+*.sh      text eol=lf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# Binary — never touch.
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.svg     text
+
+# Lockfiles — normalize to LF, never diff by default (keeps PR noise low).
+bun.lock  text eol=lf -diff
